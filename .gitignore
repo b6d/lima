@@ -1,0 +1,19 @@
+# vim artifacts
+*.sw[po]
+
+# Python byte code
+*.py[co]
+__pycache__
+
+# setuptools artifacts
+/build
+/dist
+/eggs
+/*.egg
+/*.egg-info
+
+# Sphinx artifacts
+/docs/_build
+
+# py.test/coverage artifacts
+.coverage
