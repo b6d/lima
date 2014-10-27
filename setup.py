@@ -53,13 +53,13 @@ setup(
     description='Lightweight Marshalling of Python 3 Objects.',
     long_description=read('README.rst'),
     keywords='marshal marshalling serialization api json rest',
-    url='https://github.com/b6d/lima',
+    url='https://lima.readthedocs.org',
     author='Bernhard Weitzhofer',
     author_email='bernhard@weitzhofer.org',
     license='MIT License',
     classifiers=[
         'Development Status :: 4 - Beta',
-        'Environment :: Web Environment'
+        'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: DFSG approved',
         'License :: OSI Approved :: MIT License',
