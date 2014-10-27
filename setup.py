@@ -59,7 +59,7 @@ setup(
     license='MIT License',
     classifiers=[
         'Development Status :: 4 - Beta',
-        'Environment :: Web Environment'
+        'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: DFSG approved',
         'License :: OSI Approved :: MIT License',
