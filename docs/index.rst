@@ -12,7 +12,7 @@ native to Python. The result can easily be serialized into JSON, XML, and all
 sorts of other things. lima is Free Software, lightweight and fast.
 
 .. image:: /images/alpaca_llama_vicuna.*
-    :alt: Alpaca, Llama, Vicuna (illustration from New Student's Reference
+    :alt: Alpaca, Llama, Vicuna (Illustration from The New Student's Reference
           Work, 1914)
 
 
