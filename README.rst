@@ -29,7 +29,7 @@ Easy to learn
 
 Well documented
     lima has a comprehensive tutorial and more than one line of docstring per
-    line of Python code
+    line of Python code.
 
 Free
     lima is Free Software, licensed under the terms of the MIT license (see the

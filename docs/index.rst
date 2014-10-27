@@ -38,7 +38,7 @@ Easy to learn
 
 Well documented
     lima has a comprehensive :doc:`tutorial <first_steps>` and more than one
-    line of docstring per line of Python code
+    line of docstring per line of Python code.
 
 Free
     lima is Free Software, :doc:`licensed <license>` under the terms of the MIT
