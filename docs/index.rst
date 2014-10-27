@@ -37,8 +37,8 @@ Easy to learn
     lima is not only fast but also fast (and easy) to learn.
 
 Well documented
-    lima has a comprehensive `tutorial <first_steps>`_ and more than one line
-    of docstring per line of Python code
+    lima has a comprehensive :doc:`tutorial <first_steps>` and more than one
+    line of docstring per line of Python code
 
 Free
     lima is Free Software, :doc:`licensed <license>` under the terms of the MIT
