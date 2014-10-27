@@ -47,9 +47,6 @@ def read(path):
         return f.read()
 
 
-# change to dir of setup script (allows calling this script from anywhere)
-os.chdir(os.path.dirname(__file__))
-
 setup(
     name='lima',
     version=find_version(os.path.join('lima', '__init__.py')),
