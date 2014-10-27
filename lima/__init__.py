@@ -6,4 +6,4 @@ from lima import fields
 from lima import schema
 from lima.schema import Schema
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
