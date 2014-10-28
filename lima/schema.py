@@ -54,13 +54,6 @@ def _ensure_subset(a, b):
         raise ValueError('{}: {}'.format(msg, missing))
 
 
-def _fields_include(fields, include):
-    '''Validate args and return union of field dicts.'''
-    _ensure_mapping(include)
-    _ensure_disjoint(fields, include)
-    return dict(fields, **include)  # union of 2 dicts
-
-
 def _fields_exclude(fields, remove):
     '''Return a copy of fields with fields mentioned in exclude missing.'''
     _ensure_iterable(remove)
@@ -92,21 +85,46 @@ class SchemaMeta(type):
     :attr:`__fields__` is determined like this:
 
     - The :attr:`__fields__` dicts of all base classes are copied (with base
-      classes specified first having precedence). (Note that the fields
-      themselves are not copied - changing an inherited field changes this
-      field for all the base classes as well. This behaviour might change in
-      the future. In general, it's good practice *not* to change fields once
-      created.)
+      classes specified first having precedence).
+
+      Note that the fields themselves are not copied - changing an inherited
+      field would change this field for all base classes referencing this field
+      as well. In general it is *strongly* suggested to treat fields as
+      immutable.
+
     - Fields (Class variables of type :class:`lima.abc.FieldABC`) are moved out
-      of the class dict and into the :attr:`__fields__` dict.
+      of the class dict and :attr:`__fields__`, overriding any fields of the
+      same name therein.
+
     - If present, the class attribute :attr:`__lima_args__` is removed from the
       class dict and evaluated as follows:
 
-      - Fields specified via an optional dict ``__lima_args__['include']`` are
-        added (overriding any fields of the same name present therein).
+      - Fields specified via an optional dict ``__lima_args__['include']`` (a
+        mapping of field names to fields) are added to :attr:`__fields__`,
+        overriding any fields of the same name therein.
+
+        If two fields of the same name are defined, once as a class variable,
+        and once via ``__lima_args__['include']``, a :exc:`ValueError` is
+        raised.
+
       - Fields named in an optional sequence ``__lima_args__['exclude']`` are
-        removed. If only one field is to be removed, it's ok to supply a simple
-        string instead of a list containing only one string.
+        removed from :attr:`__fields__`. If only one field is to be removed,
+        it's ok to supply a simple string instead of a list containing only one
+        string. ``__lima_args__['exclude']`` may not be specified together with
+        ``__lima_args__['only']``.
+
+      - If in an optional sequence ``__lima_args__['only']`` is provided, *all
+        but* the fields mentioned therein are removed from :attr:`__fields__`.
+        If only one field is to remain, it's ok to supply a simple string
+        instead of a list containing only one string. ``__lima_args__['only']``
+        may not be specified together with ``__lima_args__['exclude']``.
+
+        Think twice before using ``__lima_args__['only']`` - most of the time
+        it's better to rethink your Schema than to remove a lot of fields that
+        maybe shouldn't be there in the first place.
+
+    .. versionadded:: 0.3
+        Support for ``__lima_args__['only']``.
 
     :class:`SchemaMeta` also makes sure the new Schema class is registered with
     the lima class registry :mod:`lima.registry` (at least if the Schema isn't
@@ -123,28 +141,44 @@ class SchemaMeta(type):
             fields.update(base.__fields__)
 
         # pop fields defined as class vars from the new class's dict
+        cls_fields = {}
         for k, v in list(dct.items()):
             if isinstance(v, abc.FieldABC):
-                fields[k] = dct.pop(k)
+                cls_fields[k] = dct.pop(k)
+
+        # update fields with class-var-fields
+        fields.update(cls_fields)
 
         # pop and evaluate __lima_args__ (if specified)
         if '__lima_args__' in dct:
             args = dct.pop('__lima_args__')
 
             # fail on unknown args
-            unknown_args = set(args) - {'include', 'exclude'}
+            unknown_args = set(args) - {'include', 'exclude', 'only'}
             if unknown_args:
                 msg = 'Illegal key(s) for __lima_args__: {}'
                 raise ValueError(msg.format(unknown_args))
 
-            # add fields specified via include
-            if 'include' in args:
-                fields = _fields_include(fields, args['include'])
+            # fail on exclude AND only specified
+            if 'exclude' in args and 'only' in args:
+                msg = ("__lima_args__: can't specify exclude "
+                       "and only at the same time.")
+                raise ValueError(msg)
 
-            # remove fields specified via exclude
+            # add fields specified via include (raise error on ambiguity)
+            if 'include' in args:
+                include = args['include']
+                _ensure_mapping(include)
+                _ensure_disjoint(cls_fields, include)
+                fields.update(include)
+
+            # remove 'exclude' fields or just keep 'only' fields
             if 'exclude' in args:
                 exclude = _into_list_if_str(args['exclude'])
                 fields = _fields_exclude(fields, exclude)
+            elif 'only' in args:
+                only = _into_list_if_str(args['only'])
+                fields = _fields_only(fields, only)
 
         # set new _fields class variable
         dct['__fields__'] = fields
@@ -167,37 +201,51 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     '''Base class for Schemas.
 
     Args:
-        exclude: A sequence of field names to be removed from the fields of the
-            new :class:`Schema` instance. If only one field is to be removed,
-            it's ok to supply a simple string instead of a list containing only
-            one string for ``exclude``. ``exclude`` may not be specified
-            together with ``only``.
+        exclude: An optional sequence of field names to be removed from the
+            fields of the new :class:`Schema` instance. If only one field is to
+            be removed, it's ok to supply a simple string instead of a list
+            containing only one string for ``exclude``. ``exclude`` may not be
+            specified together with ``only``.
 
-        only: A sequence of the names of the only fields that shall remain for
-            the new :class:`Schema` instance.  If just one field is to remain,
-            it's ok to supply a simple string instead of a list containing only
-            one string for ``only``. ``only`` may not be specified together
-            with ``exclude``.
+        only: An optional sequence of the names of the only fields that shall
+            remain for the new :class:`Schema` instance.  If just one field is
+            to remain, it's ok to supply a simple string instead of a list
+            containing only one string for ``only``. ``only`` may not be
+            specified together with ``exclude``.
 
-        many: A boolean indicating if the new Schema will be serializing single
-            objects (``many=False``) or collections of objects (``many=True``)
-            per default. This can later be overridden in the :meth:`dump`
-            Method.
+        include: An optional mapping of field names to fields to additionally
+            include in the new Schema instance. Think twice before using this
+            option - most of the time it's better to incldue fields at class
+            level rather than at instance level.
+
+        many: An optional boolean indicating if the new Schema will be
+            serializing single objects (``many=False``) or collections of
+            objects (``many=True``) per default. This can later be overridden
+            in the :meth:`dump` Method.
+
+    .. versionadded:: 0.3
+        The ``include`` parameter.
 
     Upon creation, each Schema object gets an internal mapping of field names
-    to fields.
+    to fields. This mapping starts out as a copy of the class's
+    :attr:`__fields__` attribute.  (For an explanation on how this
+    :attr:`__fields__` attribute is determined, see :class:`SchemaMeta`.)
 
-    This mapping starts out as a copy of the classes :attr:`__fields__`
-    attribute. (Note that the fields themselves are not copied - changing a
-    field for a Schema instance changes this field for the class and all base
-    classes as well. This behaviour might change in the future. In general,
-    it's good practice *not* to change fields once created.)
+    Note that the fields themselves are not copied - changing the field of an
+    instance would change this field for the other instances and classes
+    referencing this field as well. In general it is *strongly* suggested to
+    treat fields as immutable.
 
-    The internal mapping and is then modified depending the arguments supplied
-    to the :class:`Schema`'s constructor:
+    The internal field mapping is then modified as follows:
 
-    For an explanation on how the class's :attr:`__fields__` attribute is
-    determined, see :class:`SchemaMeta`.
+    - If ``include`` was provided, fields specified therein are added
+      (overriding any fields of the same name already present)
+
+    - If ``exclude`` was provided, fields specified therein are removed.
+
+    - If ``only`` was provided, *all but* the fields specified therein are
+      removed (unless ``exclude`` was provided as well, in which case a
+      :exc:`ValueError` is raised.)
 
     Also upon creation, each Schema object gets an individually created dump
     function that aims to unroll most of the loops and to minimize the number
@@ -207,15 +255,20 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     referenced by name (used by :class:`lima.fields.Nested`).
 
     '''
-    def __init__(self, *, exclude=None, only=None, many=False):
+    def __init__(self, *, exclude=None, only=None, include=None, many=False):
         fields = self.__class__.__fields__.copy()
         if exclude and only:
             msg = "Can't specify exclude and only at the same time."
             raise ValueError(msg)
+        if include:
+            _ensure_mapping(include)
+            fields.update(include)
+
+        # remove 'exclude' fields or just keep 'only' fields
         if exclude:
             exclude = _into_list_if_str(exclude)
             fields = _fields_exclude(fields, exclude)
-        if only:
+        elif only:
             only = _into_list_if_str(only)
             fields = _fields_only(fields, only)
 
