@@ -8,7 +8,7 @@ from lima import exc
 from lima import registry
 
 
-### Helper functions ##########################################################
+# Helper functions ############################################################
 
 def _into_list_if_str(obj):
     '''Return [obj] if obj is a string, else return obj unchanged.
@@ -68,7 +68,7 @@ def _fields_only(fields, only):
     return {k: fields[k] for k in only}
 
 
-### Schema Metaclass ##########################################################
+# Schema Metaclass ############################################################
 
 class SchemaMeta(type):
     '''Metaclass of Schema.
@@ -191,11 +191,11 @@ class SchemaMeta(type):
         except exc.RegisterLocalClassError:
             pass
 
-        #return class
+        # return class
         return cls
 
 
-### Schema ####################################################################
+# Schema ######################################################################
 
 class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     '''Base class for Schemas.

@@ -161,8 +161,9 @@ class TestSchemaDefinition:
                 foo = str_field
                 bar = int_field
                 baz = date_field
+                # exclude AND only are forbidden
                 __lima_args__ = {
-                    'exclude': ['foo', 'bar'], # exclude AND only forbidden
+                    'exclude': ['foo', 'bar'],
                     'only': 'baz',
                 }
 
