@@ -131,7 +131,7 @@ class TestSchemaDefinition:
         assert TestSchema.__fields__['bar'] == int_field
         assert TestSchema.__fields__['baz'] == date_field
 
-    def test_fail_on_wrong_args(self, str_field, int_field):
+    def test_fail_on_wrong_args(self, str_field, int_field, date_field):
         '''test if incorrect __lima_args__ are caught'''
         with pytest.raises(TypeError):
             class WrongSchema1(schema.Schema):
@@ -156,7 +156,39 @@ class TestSchemaDefinition:
                     'this_is_not_a_lima_arg': 42,
                 }
 
+        with pytest.raises(ValueError):
+            class WrongSchema4(schema.Schema):
+                foo = str_field
+                bar = int_field
+                baz = date_field
+                __lima_args__ = {
+                    'exclude': ['foo', 'bar'], # exclude AND only forbidden
+                    'only': 'baz',
+                }
+
     def test_schema_inheritance(self, str_field, int_field, date_field):
+        '''Test if inheritance of fields works correctly.'''
+        class BaseSchema(schema.Schema):
+            foo = str_field
+            bar = int_field
+
+        class DerivedSchema1(BaseSchema):
+            bar = date_field  # this should override BaseSchema's foo
+
+        class DerivedSchema2(BaseSchema):
+            __lima_args__ = {
+                'include': {
+                    'bar': date_field  # this should override BaseSchema's foo
+                }
+            }
+
+        assert DerivedSchema1.__fields__['foo'] is str_field
+        assert DerivedSchema1.__fields__['bar'] is date_field
+
+        assert DerivedSchema2.__fields__['foo'] is str_field
+        assert DerivedSchema2.__fields__['bar'] is date_field
+
+    def test_schema_multi_inheritance1(self, str_field, int_field, date_field):
         '''Test if inheritance of fields works correctly.'''
         class PrimarySchema(schema.Schema):
             __lima_args__ = {
@@ -168,7 +200,39 @@ class TestSchemaDefinition:
             unrelated = 42
 
         class SecondarySchema(schema.Schema):
-            bar = str_field  # this shoud get overridden
+            bar = str_field   # this shoud get overridden in TestSchema
+            baz = date_field
+
+        class TestSchema(PrimarySchema, SecondarySchema):
+            pass
+
+        assert hasattr(TestSchema, 'unrelated')
+
+        # attrs get moved out of class dict by metaclass
+        assert not hasattr(TestSchema, 'bar')
+        assert not hasattr(TestSchema, 'baz')
+
+        assert TestSchema.__fields__['foo'] == str_field
+        assert TestSchema.__fields__['bar'] == int_field
+        assert TestSchema.__fields__['baz'] == date_field
+
+    def test_schema_multi_inheritance2(self, str_field, int_field, date_field):
+        '''Test if inheritance of fields works correctly.'''
+        class PrimarySchema(schema.Schema):
+            __lima_args__ = {
+                'include': {
+                    'foo': str_field,
+                    'bar': int_field,
+                }
+            }
+            unrelated = 42
+
+        class SecondarySchema(schema.Schema):
+            __lima_args__ = {
+                'include': {
+                    'bar': str_field  # this shoud get overridden in TestSchema
+                }
+            }
             baz = date_field
 
         class TestSchema(PrimarySchema, SecondarySchema):
@@ -199,7 +263,7 @@ class TestSchemaDefinition:
 
         assert 'foo' not in TestSchema.__fields__
         assert 'bar' not in TestSchema.__fields__
-        assert TestSchema.__fields__['baz'] == date_field
+        assert TestSchema.__fields__['baz'] is date_field
 
     def test_schema_exclude2(self, str_field, int_field, date_field):
         '''Test if excluding a single fields specified as string works.'''
@@ -213,7 +277,41 @@ class TestSchemaDefinition:
         assert not hasattr(TestSchema, 'bar')
 
         assert 'foo' not in TestSchema.__fields__
-        assert TestSchema.__fields__['bar'] == int_field
+        assert TestSchema.__fields__['bar'] is int_field
+
+    def test_schema_only1(self, str_field, int_field, date_field):
+        '''Test if excluding fields via only works ok.'''
+        class TestSchema(schema.Schema):
+            __lima_args__ = {'only': ['foo', 'bar']}
+            foo = str_field
+            bar = int_field
+            baz = date_field
+
+        # attrs get moved out of class dict by metaclass
+        assert not hasattr(TestSchema, 'foo')
+        assert not hasattr(TestSchema, 'bar')
+        assert not hasattr(TestSchema, 'baz')
+
+        assert TestSchema.__fields__['foo'] is str_field
+        assert TestSchema.__fields__['bar'] is int_field
+        assert 'baz' not in TestSchema.__fields__
+
+    def test_schema_only2(self, str_field, int_field, date_field):
+        '''Test if excluding fields via only spec. as string works ok.'''
+        class TestSchema(schema.Schema):
+            __lima_args__ = {'only': 'foo'}
+            foo = str_field
+            bar = int_field
+            baz = date_field
+
+        # attrs get moved out of class dict by metaclass
+        assert not hasattr(TestSchema, 'foo')
+        assert not hasattr(TestSchema, 'bar')
+        assert not hasattr(TestSchema, 'baz')
+
+        assert TestSchema.__fields__['foo'] is str_field
+        assert 'bar' not in TestSchema.__fields__
+        assert 'baz' not in TestSchema.__fields__
 
     def test_fail_on_duplicate_fields(self, str_field, int_field):
         '''Test if duplicate field definition raises an error.'''
@@ -313,6 +411,16 @@ class TestSchemaInstantiation:
         assert 'name' in person_schema._fields
         assert 'number' not in person_schema._fields
         assert 'born' not in person_schema._fields
+
+    def test_fields_include(self, person_schema_cls):
+        '''Test if including fields works.'''
+        fld = fields.DateTime()
+        person_schema = person_schema_cls(include={'timestamp': fld})
+
+        assert 'name' in person_schema._fields
+        assert 'number' in person_schema._fields
+        assert 'born' in person_schema._fields
+        assert person_schema._fields['timestamp'] is fld
 
     def test_fail_on_exclude_nonexistent(self, person_schema_cls):
         '''Test if excluding nonexistent fields raises an error.'''

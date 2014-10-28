@@ -54,13 +54,6 @@ def _ensure_subset(a, b):
         raise ValueError('{}: {}'.format(msg, missing))
 
 
-def _fields_include(fields, include):
-    '''Validate args and return union of field dicts.'''
-    _ensure_mapping(include)
-    _ensure_disjoint(fields, include)
-    return dict(fields, **include)  # union of 2 dicts
-
-
 def _fields_exclude(fields, remove):
     '''Return a copy of fields with fields mentioned in exclude missing.'''
     _ensure_iterable(remove)
@@ -148,28 +141,44 @@ class SchemaMeta(type):
             fields.update(base.__fields__)
 
         # pop fields defined as class vars from the new class's dict
+        cls_fields = {}
         for k, v in list(dct.items()):
             if isinstance(v, abc.FieldABC):
-                fields[k] = dct.pop(k)
+                cls_fields[k] = dct.pop(k)
+
+        # update fields with class-var-fields
+        fields.update(cls_fields)
 
         # pop and evaluate __lima_args__ (if specified)
         if '__lima_args__' in dct:
             args = dct.pop('__lima_args__')
 
             # fail on unknown args
-            unknown_args = set(args) - {'include', 'exclude'}
+            unknown_args = set(args) - {'include', 'exclude', 'only'}
             if unknown_args:
                 msg = 'Illegal key(s) for __lima_args__: {}'
                 raise ValueError(msg.format(unknown_args))
 
-            # add fields specified via include
-            if 'include' in args:
-                fields = _fields_include(fields, args['include'])
+            # fail on exclude AND only specified
+            if 'exclude' in args and 'only' in args:
+                msg = ("__lima_args__: can't specify exclude "
+                       "and only at the same time.")
+                raise ValueError(msg)
 
-            # remove fields specified via exclude
+            # add fields specified via include (raise error on ambiguity)
+            if 'include' in args:
+                include = args['include']
+                _ensure_mapping(include)
+                _ensure_disjoint(cls_fields, include)
+                fields.update(include)
+
+            # remove 'exclude' fields or just keep 'only' fields
             if 'exclude' in args:
                 exclude = _into_list_if_str(args['exclude'])
                 fields = _fields_exclude(fields, exclude)
+            elif 'only' in args:
+                only = _into_list_if_str(args['only'])
+                fields = _fields_only(fields, only)
 
         # set new _fields class variable
         dct['__fields__'] = fields
@@ -251,10 +260,15 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if exclude and only:
             msg = "Can't specify exclude and only at the same time."
             raise ValueError(msg)
+        if include:
+            _ensure_mapping(include)
+            fields.update(include)
+
+        # remove 'exclude' fields or just keep 'only' fields
         if exclude:
             exclude = _into_list_if_str(exclude)
             fields = _fields_exclude(fields, exclude)
-        if only:
+        elif only:
             only = _into_list_if_str(only)
             fields = _fields_only(fields, only)
 
