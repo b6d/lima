@@ -40,7 +40,11 @@ def _ensure_mapping(obj):
 
 
 def _ensure_disjoint(a, b):
-    '''Raise ValueError if collections a and b are not disjoint'''
+    '''Raise ValueError if collections a and b are not disjoint.
+
+    For mappings, only the keys are considered.
+
+    '''
     common = set(a) & set(b)
     if common:
         msg = 'Collections contain common element(s).'
@@ -48,7 +52,11 @@ def _ensure_disjoint(a, b):
 
 
 def _ensure_subset(a, b):
-    '''Raise ValueError if collection a is no subset of collection b'''
+    '''Raise ValueError if collection a is no subset of collection b.
+
+    For mappings, only the keys are considered.
+
+    '''
     missing = set(a) - set(b)
     if missing:
         msg = 'Collection contains element(s) not present in other.'
@@ -59,14 +67,22 @@ def _fields_exclude(fields, remove):
     '''Return a copy of fields with fields mentioned in exclude missing.'''
     _ensure_iterable(remove)
     _ensure_subset(remove, fields)
-    return {k: v for k, v in fields.items() if k not in remove}
+    result = OrderedDict()
+    for k, v in fields.items():
+        if k not in remove:
+            result[k] = v
+    return result
 
 
 def _fields_only(fields, only):
     '''Return a copy of fields containing only fields mentioned in only.'''
     _ensure_iterable(only)
     _ensure_subset(only, fields)
-    return {k: fields[k] for k in only}
+    result = OrderedDict()
+    for k, v in fields.items():
+        if k in only:
+            result[k] = v
+    return result
 
 
 # Schema Metaclass ############################################################
