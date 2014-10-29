@@ -22,8 +22,8 @@ concepts from.
     - marshmallow has more features, foremost among them deserialization and
       validation.
 
-    - Skipping validation and doing internal stuff differently, lima is (at the
-      time of writing this) noticeably faster.
+    - :ref:`Skipping validation <data_validation>` and doing internal stuff
+      differently, lima is (at the time of writing this) noticeably faster.
 
     Although greatly inspired by marshmallow's API, the lima API differs from
     marshmallow's. lima is not a drop-in replacement for marshmallow and it

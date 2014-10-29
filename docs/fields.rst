@@ -164,6 +164,8 @@ Or we can change how already supported data types are marshalled:
     :class:`lima.fields.Nested` implements :meth:`pack` as an instance method.
 
 
+.. _data_validation:
+
 Data Validation
 ===============
 
@@ -190,10 +192,6 @@ But this doesn't mean it can't be done. You'll just have to do it yourself. The
             return val
 
 .. note::
-
-    If - depending on demand and developer time - lima ever gets
-    deserialization support, sensible validation of incoming data would be a
-    key component of this feature.
 
     If you need full-featured validation of your existing data at marshalling
     time, have a look at `marshmallow <http://marshmallow.readthedocs.org>`_.
