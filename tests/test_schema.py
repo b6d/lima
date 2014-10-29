@@ -635,15 +635,55 @@ class TestSchemaInstantiation:
         from textwrap import dedent
 
         class TestSchema(schema.Schema):
-            foo = fields.String()
+            foo = fields.String(attr='foo_attr')
+            bar = fields.String()
 
         test_schema = TestSchema()
+        test_schema2 = TestSchema(dump_as='dict')
         expected = dedent(
-            '''def _dump_function(ser, obj):
+            '''\
+            def _dump_function(schema, obj):
                 return {
-                    "foo": obj.foo
+                    "foo": obj.foo_attr,
+                    "bar": obj.bar
                 }
             '''
         )
+        assert test_schema._get_dump_function_code() == expected
+        assert test_schema2._get_dump_function_code() == expected
 
+        test_schema = TestSchema(dump_as='ordered_dict')
+        expected = dedent(
+            '''\
+            def _dump_function(schema, obj):
+                return OrderedDict([
+                    ("foo", obj.foo_attr),
+                    ("bar", obj.bar)
+                ])
+            '''
+        )
+        assert test_schema._get_dump_function_code() == expected
+
+        test_schema = TestSchema(dump_as='tuple_list')
+        expected = dedent(
+            '''\
+            def _dump_function(schema, obj):
+                return [
+                    ("foo", obj.foo_attr),
+                    ("bar", obj.bar)
+                ]
+            '''
+        )
+        assert test_schema._get_dump_function_code() == expected
+
+        test_schema = TestSchema(dump_as='list')
+        expected = dedent(
+            '''\
+            def _dump_function(schema, obj):
+                return [
+                    obj.foo_attr,
+                    obj.bar
+                ]
+            '''
+        )
         assert test_schema._get_dump_function_code() == expected
