@@ -100,7 +100,8 @@ here is a user schema with fields provided via ``__lima_args__``:
 .. note::
 
     It's possible to mix and match all those features to your heart's content.
-    lima tries to fail early if something doesn't add up.
+    lima tries to fail early if something doesn't add up (remember,
+    ``"exclude"`` and ``"only"`` are mutually exclusive).
 
 .. note::
 
