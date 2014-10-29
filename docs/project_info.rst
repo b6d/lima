@@ -12,6 +12,23 @@ lima is heavily inspired by `marshmallow
 <http://marshmallow.readthedocs.org>`_, from which it lifts most of its
 concepts from.
 
+.. note::
+
+    The key differences between lima and marshmallow are (from my, Bernhard's
+    point of view):
+
+    - marshmallow supports Python 2 as well, lima is Python 3 only.
+
+    - marshmallow has more features, foremost among them deserialization and
+      validation.
+
+    - Skipping validation and doing internal stuff differently, lima is (at the
+      time of writing this) noticeably faster.
+
+    Although greatly inspired by marshmallow's API, the lima API differs from
+    marshmallow's. lima is not a drop-in replacement for marshmallow and it
+    does not intend to become one.
+
 Other than that, the author believes to have benefited a lot from looking at
 the documentation and source code of other awesome projects, among them (in
 alphabetical order):
