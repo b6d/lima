@@ -1,5 +1,4 @@
-'''Schema class and related code.'''
-
+'''Schema class and related code.''' 
 import collections.abc
 import textwrap
 from collections import OrderedDict
@@ -97,12 +96,13 @@ class SchemaMeta(type):
 
     When defining a new :class:`Schema` (sub)class, :class:`SchemaMeta` makes
     sure that the new class has a class attribute :attr:`__fields__` of type
-    ``dict`` containing the fields for the new Schema.
+    :class:`collections.OrderedDict` containing the fields for the new
+    Schema.
 
     :attr:`__fields__` is determined like this:
 
-    - The :attr:`__fields__` dicts of all base classes are copied (with base
-      classes specified first having precedence).
+    - The :attr:`__fields__` of all base classes are copied (with base classes
+      specified first having precedence).
 
       Note that the fields themselves are not copied - changing an inherited
       field would change this field for all base classes referencing this field
@@ -110,19 +110,23 @@ class SchemaMeta(type):
       immutable.
 
     - Fields (Class variables of type :class:`lima.abc.FieldABC`) are moved out
-      of the class dict and :attr:`__fields__`, overriding any fields of the
-      same name therein.
+      of the class namespace and into :attr:`__fields__`, overriding any fields
+      of the same name therein.
 
     - If present, the class attribute :attr:`__lima_args__` is removed from the
-      class dict and evaluated as follows:
+      class namespace and evaluated as follows:
 
-      - Fields specified via an optional dict ``__lima_args__['include']`` (a
-        mapping of field names to fields) are added to :attr:`__fields__`,
-        overriding any fields of the same name therein.
+      - Fields specified via ``__lima_args__['include']`` (an optional mapping
+        of field names to fields) are added to :attr:`__fields__`, overriding
+        any fields of the same name therein.
 
         If two fields of the same name are defined, once as a class variable,
         and once via ``__lima_args__['include']``, a :exc:`ValueError` is
         raised.
+
+        If the order of your fields is important, make sure that
+        ``__lima_args__['include']`` is of type
+        :class:`collections.OrderedDict` or similar.
 
       - Fields named in an optional sequence ``__lima_args__['exclude']`` are
         removed from :attr:`__fields__`. If only one field is to be removed,
@@ -152,13 +156,18 @@ class SchemaMeta(type):
         # determine Schema base classes
         schema_bases = [b for b in bases if isinstance(b, SchemaMeta)]
 
-        # fields of base classes (bases listed first have precedence)
-        fields = {}
-        for base in reversed(schema_bases):
-            fields.update(base.__fields__)
+        # this will become the __fields__ attribute of the new class
+        fields = OrderedDict()
 
-        # pop fields defined as class vars from the new class's dict
-        cls_fields = {}
+        # add fields of base classes. bases listed first have precedence. their
+        # items are also placed first in the fields OrderedDict
+        for base in schema_bases:
+            for k, v in base.__fields__.items():
+                if k not in fields:
+                    fields[k] = v
+
+        # pop fields defined as class vars from the new class's namespace
+        cls_fields = OrderedDict()
         for k, v in list(namespace.items()):
             if isinstance(v, abc.FieldABC):
                 cls_fields[k] = namespace.pop(k)
@@ -200,9 +209,9 @@ class SchemaMeta(type):
         # set new _fields class variable
         namespace['__fields__'] = fields
 
-        # Create the new class. Note that the superclass (type) gets the
-        # altered namespace as a common dict explicitly - we don't need an
-        # OrderedDict namespace any more at this point.
+        # Create the new class. Note that the superclass gets the altered
+        # namespace as a common dict explicitly - we don't need an OrderedDict
+        # namespace any more at this point.
         cls = super().__new__(metacls, name, bases, dict(namespace))
 
         # Try to register the new class. Classes defined in local namespaces
@@ -266,6 +275,9 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
     - If ``include`` was provided, fields specified therein are added
       (overriding any fields of the same name already present)
+
+      If the order of your fields is important, make sure that ``include`` is
+      of type :class:`collections.OrderedDict` or similar.
 
     - If ``exclude`` was provided, fields specified therein are removed.
 
