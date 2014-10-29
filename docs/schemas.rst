@@ -57,6 +57,28 @@ list - lima does that for you:
     list(NoLastNameSchema.__fields__)
     # ['password_hash', 'login', 'first_name']
 
+If, on the other hand, there are lots of fields to exclude, you *could* provide
+``__lima_args__['only']`` (Note that ``"exclude"`` and ``"only"`` are mutually
+exclusive):
+
+
+.. code-block:: python
+    :emphasize-lines: 2
+
+    class JustNameSchema(UserSchema):
+        __lima_args__ = {'only': ['first_name', 'last_name']}
+
+    list(JustNameSchema.__fields__)
+    # ['first_name', 'last_name']
+
+
+.. warning::
+
+    Having to provide ``"only"`` on Schema definition hints at bad design - why
+    would you add a lot of fields just to remove them quickly afterwards? Have
+    a look at :ref:`schema_objects` for the preferred way to selectively
+    remove fields.
+
 And finally, we can't just *exclude* fields, we can *include* them too. So
 here is a user schema with fields provided via ``__lima_args__``:
 
@@ -149,6 +171,7 @@ like.
     are as exhaustive as they should be. Expect above code to fail on slightly
     exotic column types. There is still work to be done.
 
+.. _schema_objects:
 
 Schema Objects
 ==============
@@ -204,7 +227,27 @@ The same thing can be achieved via the ``only`` keyword-only argument:
 
 You may have already guessed: both ``exclude`` and ``only`` take lists of field
 names as well as simple strings for a single field name -- just like
-``__lima_args__['exclude']``.
+``__lima_args__['exclude']`` and ``__lima_args__['only']``.
+
+You *could* also include fields on schema object creation time:
+
+.. code-block:: python
+    :emphasize-lines: 3,9
+
+    getter = lambda o: '{}, {}'.format(o.last_name, o.first_name)
+
+    schema = PersonSchema(include={'sort_name': fields.String(get=getter)})
+
+    schema.dump(person)
+    # {'date_of_birth': '1899-07-21',
+    #  'first_name': 'Ernest',
+    #  'last_name': 'Hemingway',
+    #  'sort_name': 'Hemingway, Ernest'}
+
+.. warning::
+
+    Having to provide ``include`` on Schema object creation hints at bad design
+    - why not just include the fields in the Schema itself?
 
 
 Marshalling Collections
