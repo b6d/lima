@@ -327,8 +327,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             fields = _fields_only(fields, only)
 
         self._fields = fields
+        self._dump_as = dump_as
         self.many = many
-        self.dump_as = dump_as
 
         # get code for the customized dump function
         code = self._get_dump_function_code()
@@ -374,13 +374,13 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         func_tpl = {'dict': _tpl_dict,
                     'ordered_dict': _tpl_ordered_dict,
                     'tuple_list': _tpl_list,
-                    'list': _tpl_list}[self.dump_as]
+                    'list': _tpl_list}[self._dump_as]
 
         # get correct entry template depending on result type
         entry_tpl = {'dict': '"{key}": {get_val}',
                      'ordered_dict': '("{key}", {get_val})',
                      'tuple_list': '("{key}", {get_val})',
-                     'list': '{get_val}'}[self.dump_as]
+                     'list': '{get_val}'}[self._dump_as]
 
         # one entry per field
         entries = []
