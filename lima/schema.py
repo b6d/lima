@@ -1,7 +1,7 @@
-'''Schema class and related code.'''
-
+'''Schema class and related code.''' 
 import collections.abc
 import textwrap
+from collections import OrderedDict
 
 from lima import abc
 from lima import exc
@@ -39,7 +39,11 @@ def _ensure_mapping(obj):
 
 
 def _ensure_disjoint(a, b):
-    '''Raise ValueError if collections a and b are not disjoint'''
+    '''Raise ValueError if collections a and b are not disjoint.
+
+    For mappings, only the keys are considered.
+
+    '''
     common = set(a) & set(b)
     if common:
         msg = 'Collections contain common element(s).'
@@ -47,7 +51,11 @@ def _ensure_disjoint(a, b):
 
 
 def _ensure_subset(a, b):
-    '''Raise ValueError if collection a is no subset of collection b'''
+    '''Raise ValueError if collection a is no subset of collection b.
+
+    For mappings, only the keys are considered.
+
+    '''
     missing = set(a) - set(b)
     if missing:
         msg = 'Collection contains element(s) not present in other.'
@@ -58,14 +66,22 @@ def _fields_exclude(fields, remove):
     '''Return a copy of fields with fields mentioned in exclude missing.'''
     _ensure_iterable(remove)
     _ensure_subset(remove, fields)
-    return {k: v for k, v in fields.items() if k not in remove}
+    result = OrderedDict()
+    for k, v in fields.items():
+        if k not in remove:
+            result[k] = v
+    return result
 
 
 def _fields_only(fields, only):
     '''Return a copy of fields containing only fields mentioned in only.'''
     _ensure_iterable(only)
     _ensure_subset(only, fields)
-    return {k: fields[k] for k in only}
+    result = OrderedDict()
+    for k, v in fields.items():
+        if k in only:
+            result[k] = v
+    return result
 
 
 # Schema Metaclass ############################################################
@@ -80,12 +96,13 @@ class SchemaMeta(type):
 
     When defining a new :class:`Schema` (sub)class, :class:`SchemaMeta` makes
     sure that the new class has a class attribute :attr:`__fields__` of type
-    ``dict`` containing the fields for the new Schema.
+    :class:`collections.OrderedDict` containing the fields for the new
+    Schema.
 
     :attr:`__fields__` is determined like this:
 
-    - The :attr:`__fields__` dicts of all base classes are copied (with base
-      classes specified first having precedence).
+    - The :attr:`__fields__` of all base classes are copied (with base classes
+      specified first having precedence).
 
       Note that the fields themselves are not copied - changing an inherited
       field would change this field for all base classes referencing this field
@@ -93,19 +110,23 @@ class SchemaMeta(type):
       immutable.
 
     - Fields (Class variables of type :class:`lima.abc.FieldABC`) are moved out
-      of the class dict and :attr:`__fields__`, overriding any fields of the
-      same name therein.
+      of the class namespace and into :attr:`__fields__`, overriding any fields
+      of the same name therein.
 
     - If present, the class attribute :attr:`__lima_args__` is removed from the
-      class dict and evaluated as follows:
+      class namespace and evaluated as follows:
 
-      - Fields specified via an optional dict ``__lima_args__['include']`` (a
-        mapping of field names to fields) are added to :attr:`__fields__`,
-        overriding any fields of the same name therein.
+      - Fields specified via ``__lima_args__['include']`` (an optional mapping
+        of field names to fields) are added to :attr:`__fields__`, overriding
+        any fields of the same name therein.
 
         If two fields of the same name are defined, once as a class variable,
         and once via ``__lima_args__['include']``, a :exc:`ValueError` is
         raised.
+
+        If the order of your fields is important, make sure that
+        ``__lima_args__['include']`` is of type
+        :class:`collections.OrderedDict` or similar.
 
       - Fields named in an optional sequence ``__lima_args__['exclude']`` are
         removed from :attr:`__fields__`. If only one field is to be removed,
@@ -131,27 +152,32 @@ class SchemaMeta(type):
     defined inside a local namespace, where we wouldn't find it later on).
 
     '''
-    def __new__(mcls, name, bases, dct):
+    def __new__(metacls, name, bases, namespace):
         # determine Schema base classes
         schema_bases = [b for b in bases if isinstance(b, SchemaMeta)]
 
-        # fields of base classes (bases listed first have precedence)
-        fields = {}
-        for base in reversed(schema_bases):
-            fields.update(base.__fields__)
+        # this will become the __fields__ attribute of the new class
+        fields = OrderedDict()
 
-        # pop fields defined as class vars from the new class's dict
-        cls_fields = {}
-        for k, v in list(dct.items()):
+        # add fields of base classes. bases listed first have precedence. their
+        # items are also placed first in the fields OrderedDict
+        for base in schema_bases:
+            for k, v in base.__fields__.items():
+                if k not in fields:
+                    fields[k] = v
+
+        # pop fields defined as class vars from the new class's namespace
+        cls_fields = OrderedDict()
+        for k, v in list(namespace.items()):
             if isinstance(v, abc.FieldABC):
-                cls_fields[k] = dct.pop(k)
+                cls_fields[k] = namespace.pop(k)
 
         # update fields with class-var-fields
         fields.update(cls_fields)
 
         # pop and evaluate __lima_args__ (if specified)
-        if '__lima_args__' in dct:
-            args = dct.pop('__lima_args__')
+        if '__lima_args__' in namespace:
+            args = namespace.pop('__lima_args__')
 
             # fail on unknown args
             unknown_args = set(args) - {'include', 'exclude', 'only'}
@@ -181,11 +207,15 @@ class SchemaMeta(type):
                 fields = _fields_only(fields, only)
 
         # set new _fields class variable
-        dct['__fields__'] = fields
+        namespace['__fields__'] = fields
 
-        # Try to register class. Classes defined in local namespaces can not
-        # be registered. We're ok with this.
-        cls = super().__new__(mcls, name, bases, dct)
+        # Create the new class. Note that the superclass gets the altered
+        # namespace as a common dict explicitly - we don't need an OrderedDict
+        # namespace any more at this point.
+        cls = super().__new__(metacls, name, bases, dict(namespace))
+
+        # Try to register the new class. Classes defined in local namespaces
+        # cannot be registerd. We're ok with this.
         try:
             registry.global_registry.register(cls)
         except exc.RegisterLocalClassError:
@@ -193,6 +223,11 @@ class SchemaMeta(type):
 
         # return class
         return cls
+
+    @classmethod
+    def __prepare__(metacls, name, bases):
+        '''Return an OrderedDict as the class namespace.'''
+        return OrderedDict()
 
 
 # Schema ######################################################################
@@ -240,6 +275,9 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
     - If ``include`` was provided, fields specified therein are added
       (overriding any fields of the same name already present)
+
+      If the order of your fields is important, make sure that ``include`` is
+      of type :class:`collections.OrderedDict` or similar.
 
     - If ``exclude`` was provided, fields specified therein are removed.
 

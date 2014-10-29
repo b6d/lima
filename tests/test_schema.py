@@ -1,4 +1,5 @@
 '''tests for the schema module'''
+from collections import OrderedDict
 
 import pytest
 
@@ -342,6 +343,132 @@ class TestSchemaDefinition:
         retrieved_schema = global_registry.get(__name__ + '.NonLocalSchema')
         assert retrieved_schema == NonLocalSchema
 
+    def test_schema_field_order_1(self):
+        '''Test if fields are in the expected order.'''
+        # this test is rather long. surely there is a better way to do this
+        field1 = fields.String()
+        field2 = fields.String()
+        field3 = fields.String()
+        field4 = fields.String()
+        field5 = fields.String()
+        field6 = fields.String()
+        field7 = fields.String()
+        field8 = fields.String()
+        field9 = fields.String()
+
+        # to test overrides
+        new_field4 = fields.String()
+        new_field5 = fields.String()
+
+        class TestSchema1(schema.Schema):
+            one = field1
+            two = field2
+            three = field3
+            four = field4
+            five = field5
+        test_instance1 = TestSchema1()
+        expected = OrderedDict(
+            [
+                ('one', field1),
+                ('two', field2),
+                ('three', field3),
+                ('four', field4),
+                ('five', field5),
+            ]
+        )
+        assert TestSchema1.__fields__ == expected
+        assert test_instance1._fields == expected
+
+        class TestMixin(schema.Schema):
+            five = new_field5
+            six = field6
+
+        # should NOT override TestSchema1's field5
+        class TestSchema2(TestSchema1, TestMixin):
+            pass
+        test_instance2 = TestSchema2()
+        expected = OrderedDict(
+            [
+                ('one', field1),
+                ('two', field2),
+                ('three', field3),
+                ('four', field4),
+                ('five', field5),
+                ('six', field6),
+            ]
+        )
+        assert TestSchema2.__fields__ == expected
+        assert test_instance2._fields == expected
+
+        # SHOULD override TestSchema1's field5. Also, different order.
+        class TestSchema3(TestMixin, TestSchema1):
+            pass
+        test_instance3 = TestSchema3()
+        expected = OrderedDict(
+            [
+                ('five', new_field5),
+                ('six', field6),
+                ('one', field1),
+                ('two', field2),
+                ('three', field3),
+                ('four', field4),
+            ]
+        )
+        assert TestSchema3.__fields__ == expected
+        assert test_instance3._fields == expected
+
+        class TestSchema4(TestSchema1):
+            four = new_field4   # this should replace inherited
+            six = field6  # this should land afterwards
+            seven = field7  # this should land afterwards
+            __lima_args__ = {
+                'include': OrderedDict(
+                    [
+                        ('five', new_field5),  # this should replace inherited
+                        ('eight', field8),  # this sould land afterwards
+                        ('nine', field9),  # this sould land afterwards
+                    ]
+                )
+            }
+        test_instance4 = TestSchema4()
+        expected = OrderedDict(
+            [
+                ('one', field1),
+                ('two', field2),
+                ('three', field3),
+                ('four', new_field4),
+                ('five', new_field5),
+                ('six', field6),
+                ('seven', field7),
+                ('eight', field8),
+                ('nine', field9),
+            ]
+        )
+        assert TestSchema4.__fields__ == expected
+        assert test_instance4._fields == expected
+
+        # see if only/exclude don't mess up order
+        class TestSchema5(TestSchema1):
+            __lima_args__ = {'only': ['three', 'five', 'one']}
+        class TestSchema6(TestSchema1):
+            __lima_args__ = {'exclude': ['four', 'two']}
+        test_instance5 = TestSchema5()
+        test_instance6 = TestSchema6()
+        test_instance1a = TestSchema1(only=['three', 'five', 'one'])
+        test_instance1b = TestSchema1(exclude=['four', 'two'])
+        expected = OrderedDict(
+            [
+                ('one', field1),
+                ('three', field3),
+                ('five', field5),
+            ]
+        )
+        assert TestSchema5.__fields__ == expected
+        assert test_instance5._fields == expected
+        assert TestSchema6.__fields__ == expected
+        assert test_instance6._fields == expected
+        assert test_instance1a._fields == expected
+        assert test_instance1b._fields == expected
 
 class TestSchemaInstantiation:
     '''Class collecting tests of Schema object creation.'''
