@@ -131,7 +131,7 @@ class SchemaMeta(type):
     defined inside a local namespace, where we wouldn't find it later on).
 
     '''
-    def __new__(mcls, name, bases, dct):
+    def __new__(metacls, name, bases, namespace):
         # determine Schema base classes
         schema_bases = [b for b in bases if isinstance(b, SchemaMeta)]
 
@@ -142,16 +142,16 @@ class SchemaMeta(type):
 
         # pop fields defined as class vars from the new class's dict
         cls_fields = {}
-        for k, v in list(dct.items()):
+        for k, v in list(namespace.items()):
             if isinstance(v, abc.FieldABC):
-                cls_fields[k] = dct.pop(k)
+                cls_fields[k] = namespace.pop(k)
 
         # update fields with class-var-fields
         fields.update(cls_fields)
 
         # pop and evaluate __lima_args__ (if specified)
-        if '__lima_args__' in dct:
-            args = dct.pop('__lima_args__')
+        if '__lima_args__' in namespace:
+            args = namespace.pop('__lima_args__')
 
             # fail on unknown args
             unknown_args = set(args) - {'include', 'exclude', 'only'}
@@ -181,11 +181,13 @@ class SchemaMeta(type):
                 fields = _fields_only(fields, only)
 
         # set new _fields class variable
-        dct['__fields__'] = fields
+        namespace['__fields__'] = fields
 
-        # Try to register class. Classes defined in local namespaces can not
-        # be registered. We're ok with this.
-        cls = super().__new__(mcls, name, bases, dct)
+        # create new class
+        cls = super().__new__(metacls, name, bases, namespace)
+
+        # Try to register the new class. Classes defined in local namespaces
+        # can not be registered. We're ok with this.
         try:
             registry.global_registry.register(cls)
         except exc.RegisterLocalClassError:
