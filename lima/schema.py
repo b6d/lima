@@ -2,6 +2,7 @@
 
 import collections.abc
 import textwrap
+from collections import OrderedDict
 
 from lima import abc
 from lima import exc
@@ -183,11 +184,13 @@ class SchemaMeta(type):
         # set new _fields class variable
         namespace['__fields__'] = fields
 
-        # create new class
-        cls = super().__new__(metacls, name, bases, namespace)
+        # Create the new class. Note that the superclass (type) gets the
+        # altered namespace as a common dict explicitly - we don't need an
+        # OrderedDict namespace any more at this point.
+        cls = super().__new__(metacls, name, bases, dict(namespace))
 
         # Try to register the new class. Classes defined in local namespaces
-        # can not be registered. We're ok with this.
+        # cannot be registerd. We're ok with this.
         try:
             registry.global_registry.register(cls)
         except exc.RegisterLocalClassError:
@@ -195,6 +198,11 @@ class SchemaMeta(type):
 
         # return class
         return cls
+
+    @classmethod
+    def __prepare__(metacls, name, bases):
+        '''Return an OrderedDict as the class namespace.'''
+        return OrderedDict()
 
 
 # Schema ######################################################################
