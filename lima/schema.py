@@ -250,7 +250,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         include: An optional mapping of field names to fields to additionally
             include in the new Schema instance. Think twice before using this
-            option - most of the time it's better to incldue fields at class
+            option - most of the time it's better to include fields at class
             level rather than at instance level.
 
         many: An optional boolean indicating if the new Schema will be
