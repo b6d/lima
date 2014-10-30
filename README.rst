@@ -74,4 +74,6 @@ Installation
 
   $ pip install lima
 
-See the documentation for more comprehensive install instructions.
+See the `documentation`_  for more comprehensive install instructions.
+
+.. _documentation: https://lima.readthedocs.org/en/latest/
