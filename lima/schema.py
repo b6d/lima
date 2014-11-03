@@ -334,7 +334,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         code = self._get_dump_function_code()
 
         # this defines _dump_function in self's namespace
-        exec(code, self.__dict__)
+        exec(code, globals(), self.__dict__)
 
     def _get_dump_function_code(self):
         '''Get code for a customized dump function.'''
