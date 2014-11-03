@@ -9,8 +9,8 @@ Changelog
 
     While unreleased, the changelog of lima 0.3 is itself subject to change.
 
-- Support different dump formats (dict, ordered dict, list of tuples or list)
-  via *dump_as* parameter for Schema constructor
+- Support dumping of ``OrderedDict`` objects by providing ``ordered=True`` to
+  Schema constructor
 
 - Add New possibilities to specify a schema's fields:
 
