@@ -34,6 +34,15 @@ lima.schema
    :members:
 
 
+.. _api_enums:
+
+lima.enums
+=============
+
+.. automodule:: lima.enums
+    :members:
+
+
 .. _api_exc:
 
 lima.exc

@@ -6,6 +6,7 @@ from collections import OrderedDict
 from lima import abc
 from lima import exc
 from lima import registry
+from lima.enums import MarshalFormat
 
 
 # Helper functions ############################################################
@@ -255,10 +256,10 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             option - most of the time it's better to include fields at class
             level rather than at instance level.
 
-        dump_as: A string indicating how an object should be dumped by this
-            schema instance. Possible values are "dict", "ordered_dict",
-            "tuple_list" and "list", with "dict" being the default. This does
-            not influence how nested fields are serialized.
+        dump_as: An optional :class:`lima.enums.MarshalFormat`, indicating how
+            an object should be dumped by this schema instance. Defaults to
+            :attr:`lima.enums.MarshalFormat.dict`. This does not influence how
+            nested fields are serialized.
 
         many: An optional boolean indicating if the new Schema will be
             serializing single objects (``many=False``) or collections of
@@ -308,7 +309,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                  exclude=None,
                  only=None,
                  include=None,
-                 dump_as='dict',
+                 dump_as=MarshalFormat.dict,
                  many=False):
         fields = self.__class__.__fields__.copy()
         if exclude and only:
@@ -371,16 +372,20 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         )
 
         # get correct function template depending on result type
-        func_tpl = {'dict': _tpl_dict,
-                    'ordered_dict': _tpl_ordered_dict,
-                    'tuple_list': _tpl_list,
-                    'list': _tpl_list}[self._dump_as]
+        func_tpl = {
+            MarshalFormat.dict: _tpl_dict,
+            MarshalFormat.ordered_dict: _tpl_ordered_dict,
+            MarshalFormat.tuples: _tpl_list,
+            MarshalFormat.list: _tpl_list
+        }[self._dump_as]
 
         # get correct entry template depending on result type
-        entry_tpl = {'dict': '"{key}": {get_val}',
-                     'ordered_dict': '("{key}", {get_val})',
-                     'tuple_list': '("{key}", {get_val})',
-                     'list': '{get_val}'}[self._dump_as]
+        entry_tpl = {
+            MarshalFormat.dict: '"{key}": {get_val}',
+            MarshalFormat.ordered_dict: '("{key}", {get_val})',
+            MarshalFormat.tuples: '("{key}", {get_val})',
+            MarshalFormat.list: '{get_val}'
+        }[self._dump_as]
 
         # one entry per field
         entries = []
