@@ -484,6 +484,18 @@ class TestSchemaDefinition:
         assert test_instance1a._fields == expected
         assert test_instance1b._fields == expected
 
+    def test_name_mangling(self):
+        class SomeSchema(schema.Schema):
+            at__foo = fields.String()
+            hash__bar = fields.String()
+            plus__baz = fields.String()
+            nil__at__qux = fields.String()
+
+        assert '@foo' in SomeSchema.__fields__
+        assert '#bar' in SomeSchema.__fields__
+        assert '+baz' in SomeSchema.__fields__
+        assert 'at__qux' in SomeSchema.__fields__
+
 
 class TestSchemaInstantiation:
     '''Class collecting tests of Schema object creation.'''

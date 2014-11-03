@@ -192,7 +192,7 @@ class SchemaMeta(type):
         cls_fields = OrderedDict()
         for k, v in list(namespace.items()):
             if isinstance(v, abc.FieldABC):
-                cls_fields[k] = namespace.pop(k)
+                cls_fields[_mangle_name(k)] = namespace.pop(k)
 
         # update fields with class-var-fields
         fields.update(cls_fields)
