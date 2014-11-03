@@ -1,5 +1,6 @@
 '''tests for schema.Schema.dump module'''
 
+from collections import OrderedDict
 from datetime import date, datetime
 
 import pytest
@@ -184,3 +185,17 @@ def test_dump_nested_schema_self(king):
         'boss': {'name': 'Arthur'},
     }
     assert king_schema.dump(king) == expected
+
+
+def test_ordered(king):
+    person_schema = PersonSchema(ordered=True)
+    expected = OrderedDict(
+        [
+            ('title', 'King'),
+            ('name', 'Arthur'),
+            ('number', 1),
+            ('born', '0501-01-01'),
+        ]
+    )
+
+    assert person_schema.dump(king) == expected

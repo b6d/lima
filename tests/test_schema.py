@@ -4,7 +4,6 @@ from collections import OrderedDict
 import pytest
 
 from lima import abc, fields, schema
-from lima.enums import MarshalFormat
 from lima.registry import global_registry
 
 
@@ -640,7 +639,6 @@ class TestSchemaInstantiation:
             bar = fields.String()
 
         test_schema = TestSchema()
-        test_schema2 = TestSchema(dump_as=MarshalFormat.dict)
         expected = dedent(
             '''\
             def _dump_function(schema, obj):
@@ -651,9 +649,8 @@ class TestSchemaInstantiation:
             '''
         )
         assert test_schema._get_dump_function_code() == expected
-        assert test_schema2._get_dump_function_code() == expected
 
-        test_schema = TestSchema(dump_as=MarshalFormat.ordered_dict)
+        test_schema = TestSchema(ordered=True)
         expected = dedent(
             '''\
             def _dump_function(schema, obj):
@@ -661,30 +658,6 @@ class TestSchemaInstantiation:
                     ("foo", obj.foo_attr),
                     ("bar", obj.bar)
                 ])
-            '''
-        )
-        assert test_schema._get_dump_function_code() == expected
-
-        test_schema = TestSchema(dump_as=MarshalFormat.tuples)
-        expected = dedent(
-            '''\
-            def _dump_function(schema, obj):
-                return [
-                    ("foo", obj.foo_attr),
-                    ("bar", obj.bar)
-                ]
-            '''
-        )
-        assert test_schema._get_dump_function_code() == expected
-
-        test_schema = TestSchema(dump_as=MarshalFormat.list)
-        expected = dedent(
-            '''\
-            def _dump_function(schema, obj):
-                return [
-                    obj.foo_attr,
-                    obj.bar
-                ]
             '''
         )
         assert test_schema._get_dump_function_code() == expected

@@ -6,7 +6,6 @@ from collections import OrderedDict
 from lima import abc
 from lima import exc
 from lima import registry
-from lima.enums import MarshalFormat
 
 
 # Helper functions ############################################################
@@ -256,10 +255,10 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             option - most of the time it's better to include fields at class
             level rather than at instance level.
 
-        dump_as: An optional :class:`lima.enums.MarshalFormat`, indicating how
-            an object should be dumped by this schema instance. Defaults to
-            :attr:`lima.enums.MarshalFormat.dict`. This does not influence how
-            nested fields are serialized.
+        ordered: An optional boolean indicating if the :meth:`Schema.dump`
+            method should output :class:`collections.OrderedDict` objects
+            instead of simple :class:`dict` objects.  Defaults to ``False``.
+            This does not influence how nested fields are serialized.
 
         many: An optional boolean indicating if the new Schema will be
             serializing single objects (``many=False``) or collections of
@@ -270,7 +269,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         The ``include`` parameter.
 
     .. versionadded:: 0.3
-        The ``dump_as`` parameter.
+        The ``ordered`` parameter.
 
     Upon creation, each Schema object gets an internal mapping of field names
     to fields. This mapping starts out as a copy of the class's
@@ -309,7 +308,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                  exclude=None,
                  only=None,
                  include=None,
-                 dump_as=MarshalFormat.dict,
+                 ordered=False,
                  many=False):
         fields = self.__class__.__fields__.copy()
         if exclude and only:
@@ -328,7 +327,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             fields = _fields_only(fields, only)
 
         self._fields = fields
-        self._dump_as = dump_as
+        self._ordered = ordered
         self.many = many
 
         # get code for the customized dump function
@@ -345,47 +344,27 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         # means that ten Schema objects will have ten separate dump functions
         # associated with them.
 
-        # function templates for different result types
-        _tpl_dict = textwrap.dedent(
-            '''\
-            def _dump_function(schema, obj):
-                return {{
-                    {contents}
-                }}
-            '''
-        )
-        _tpl_ordered_dict = textwrap.dedent(
-            '''\
-            def _dump_function(schema, obj):
-                return OrderedDict([
-                    {contents}
-                ])
-            '''
-        )
-        _tpl_list = textwrap.dedent(
-            '''\
-            def _dump_function(schema, obj):
-                return [
-                    {contents}
-                ]
-            '''
-        )
-
-        # get correct function template depending on result type
-        func_tpl = {
-            MarshalFormat.dict: _tpl_dict,
-            MarshalFormat.ordered_dict: _tpl_ordered_dict,
-            MarshalFormat.tuples: _tpl_list,
-            MarshalFormat.list: _tpl_list
-        }[self._dump_as]
-
-        # get correct entry template depending on result type
-        entry_tpl = {
-            MarshalFormat.dict: '"{key}": {get_val}',
-            MarshalFormat.ordered_dict: '("{key}", {get_val})',
-            MarshalFormat.tuples: '("{key}", {get_val})',
-            MarshalFormat.list: '{get_val}'
-        }[self._dump_as]
+        # get correct templates
+        if self._ordered:
+            func_tpl = textwrap.dedent(
+                '''\
+                def _dump_function(schema, obj):
+                    return OrderedDict([
+                        {contents}
+                    ])
+                '''
+            )
+            entry_tpl =  '("{key}", {get_val})'
+        else:
+            func_tpl = textwrap.dedent(
+                '''\
+                def _dump_function(schema, obj):
+                    return {{
+                        {contents}
+                    }}
+                '''
+            )
+            entry_tpl = '"{key}": {get_val}'
 
         # one entry per field
         entries = []
