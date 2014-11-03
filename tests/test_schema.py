@@ -85,6 +85,19 @@ class TestHelperFunctions:
         with pytest.raises(TypeError):
             schema._ensure_subset(1, [1, 2, 3])
 
+    def test_mangle_name(self):
+        # this should not raise anything
+        mangle = schema._mangle_name
+        assert mangle('') == ''
+        assert mangle('foo') == 'foo'
+        assert mangle('at_foo') == 'at_foo'
+        assert mangle('at__foo') == '@foo'
+        assert mangle('at___foo') == '@_foo'
+        assert mangle('nil__at__foo') == 'at__foo'
+        assert mangle('whatever__foo') == 'whatever__foo'
+        assert mangle('hash__bar') == '#bar'
+        assert mangle('plus__baz') == '+baz'
+
 
 class TestSchemaDefinition:
     '''Class collecting tests of Schema class definition.'''
