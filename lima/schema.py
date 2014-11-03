@@ -1,4 +1,4 @@
-'''Schema class and related code.''' 
+'''Schema class and related code.'''
 import collections.abc
 import textwrap
 from collections import OrderedDict
@@ -159,8 +159,10 @@ class SchemaMeta(type):
         # this will become the __fields__ attribute of the new class
         fields = OrderedDict()
 
-        # add fields of base classes. bases listed first have precedence. their
-        # items are also placed first in the fields OrderedDict
+        # Add fields of base classes. Bases listed first have precedence (to
+        # reflect how python inherits class attributes). Their items are also
+        # placed first in the fields OrderedDict (to reflect the order in which
+        # the bases are written down in the class definition).
         for base in schema_bases:
             for k, v in base.__fields__.items():
                 if k not in fields:
@@ -253,6 +255,11 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             option - most of the time it's better to include fields at class
             level rather than at instance level.
 
+        ordered: An optional boolean indicating if the :meth:`Schema.dump`
+            method should output :class:`collections.OrderedDict` objects
+            instead of simple :class:`dict` objects.  Defaults to ``False``.
+            This does not influence how nested fields are serialized.
+
         many: An optional boolean indicating if the new Schema will be
             serializing single objects (``many=False``) or collections of
             objects (``many=True``) per default. This can later be overridden
@@ -260,6 +267,9 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
     .. versionadded:: 0.3
         The ``include`` parameter.
+
+    .. versionadded:: 0.3
+        The ``ordered`` parameter.
 
     Upon creation, each Schema object gets an internal mapping of field names
     to fields. This mapping starts out as a copy of the class's
@@ -293,7 +303,13 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     referenced by name (used by :class:`lima.fields.Nested`).
 
     '''
-    def __init__(self, *, exclude=None, only=None, include=None, many=False):
+    def __init__(self,
+                 *,
+                 exclude=None,
+                 only=None,
+                 include=None,
+                 ordered=False,
+                 many=False):
         fields = self.__class__.__fields__.copy()
         if exclude and only:
             msg = "Can't specify exclude and only at the same time."
@@ -311,82 +327,96 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             fields = _fields_only(fields, only)
 
         self._fields = fields
+        self._ordered = ordered
         self.many = many
 
+        # get code for the customized dump function
         code = self._get_dump_function_code()
 
         # this defines _dump_function in self's namespace
-        exec(code, self.__dict__)
+        exec(code, globals(), self.__dict__)
 
     def _get_dump_function_code(self):
-        '''Add a dump function to self.
-
-        Args:
-            verbose:
-                If True, print the code of the created dump function to stdout.
-        '''
-        # note that even though dump_function looks like a method at first
-        # glance, it is NOT, since it will tied to a specific Schema instance
-        # instead of to the Schema class like a method would be. This means
-        # that ten Schema objects will have ten separate dump functions
+        '''Get code for a customized dump function.'''
+        # note that even _though dump_function might *look* like a method at
+        # first glance, it is *not*, since it will tied to a specific Schema
+        # instance instead of to the Schema class like a method would be. This
+        # means that ten Schema objects will have ten separate dump functions
         # associated with them.
-        tpl = textwrap.dedent(
-            '''def _dump_function(ser, obj):
-                return {{
-                    {dict_contents}
-                }}
-            '''
-        )
-        parts = []
+
+        # get correct templates
+        if self._ordered:
+            func_tpl = textwrap.dedent(
+                '''\
+                def _dump_function(schema, obj):
+                    return OrderedDict([
+                        {contents}
+                    ])
+                '''
+            )
+            entry_tpl =  '("{key}", {get_val})'
+        else:
+            func_tpl = textwrap.dedent(
+                '''\
+                def _dump_function(schema, obj):
+                    return {{
+                        {contents}
+                    }}
+                '''
+            )
+            entry_tpl = '"{key}": {get_val}'
+
+        # one entry per field
+        entries = []
+
+        # iterate over fields to fill up entries
         for field_num, (field_name, field) in enumerate(self._fields.items()):
 
             if hasattr(field, 'get'):
-                # in case the field has a getter, add getter-shortcut to self
+                #add getter-shortcut to self
                 getter_name = '__get_{}'.format(field_num)
                 setattr(self, getter_name, field.get)
 
-                # determine val to serialize by calling the shortcut later on
-                determine_val = 'ser.{}(obj)'.format(getter_name)
+                # later, get value by calling getter-shortcut
+                get_val = 'schema.{}(obj)'.format(getter_name)
 
             elif hasattr(field, 'attr'):
-                # otherwise if attr is specified, use it to determine val
-
-                # try to guard against code injection
+                # try to guard against code injection via malformed attr
                 if not str.isidentifier(field.attr):
                     msg = 'Not a valid identifier: "{}"'
                     raise ValueError(msg.format(field.attr))
 
-                determine_val = 'obj.{}'.format(field.attr)
+                # later, get value using attr
+                get_val = 'obj.{}'.format(field.attr)
 
             else:
-                # otherwise the attribute name is assumed to be the field name
-
-                # try to guard against code injection
+                # try to guard against code injection via malformed field_name
                 if not str.isidentifier(field_name):
                     msg = 'Not a valid identifier: "{}"'
                     raise ValueError(msg.format(field_name))
 
-                determine_val = 'obj.{}'.format(field_name)
+                # later, get value using field_name
+                get_val = 'obj.{}'.format(field_name)
 
             if hasattr(field, 'pack'):
-                # in case the field has a "pack" method, add shortcut to self
+                # add pack-shortcut to self
                 packer_name = '__pack_{}'.format(field_num)
                 setattr(self, packer_name, field.pack)
 
-                # determine serialized value by calling packer shortcut on
-                # result of determine_val-call later on
-                determine_val = 'ser.{}({})'.format(packer_name, determine_val)
+                # later, wrap pass result of get_val to pack-shortcut
+                get_val = 'schema.{}({})'.format(packer_name, get_val)
 
-            # try to guard against code injection
+            # try to guard against code injection via quotes in key
             key = str(field_name)
             if '"' in key or "'" in key:
                 msg = 'Quotes are not allowed in field names: {}'
                 raise ValueError(msg.format(key))
 
-            parts.append('"{}": {}'.format(key, determine_val))
+            # add entry
+            entries.append(entry_tpl.format(key=key, get_val=get_val))
 
         sep = ',\n        '
-        code = tpl.format(dict_contents=sep.join(parts))
+        code = func_tpl.format(contents=sep.join(entries))
         return code
 
     def dump(self, obj, *, many=None):
