@@ -15,31 +15,42 @@ class Field(abc.FieldABC):
         get: An optional getter function accepting an object as its only
             parameter and returning the field value.
 
-    When a :class:`Field` has both ``attr`` *and* ``get`` defined (either via
-    passing them to the constructor of :class:`Field` or because the subclass
-    implements ``attr`` or ``get`` on the class level, ``get`` *always* takes
-    precedence.
+        val: An optional constant value for the field.
 
-    If neither ``get`` nor ``attr`` are defined (not per instance and not at
-    the class level), :meth:`lima.schema.Schema.dump` tries to get the field
-    value by looking for an attribute of the same name the Field has within the
-    corresponding :class:`lima.schema.Schema` instance.
+    .. versionadded:: 0.3
+        The ``val`` parameter.
+
+    :attr:`attr`, :attr:`get` and :attr:`val` are mutually exclusive.
+
+    When a :class:`Field` object ends up with two or more of the attributes
+    :attr:`attr`, :attr:`get` and :attr:`val` regardless (because one or more
+    of them are implemented at the class level for example),
+    :meth:`lima.schema.Schema.dump` tries to get the field's value in the
+    following order: :attr:`val` takes precedence over :attr:`get` and
+    :attr:`get` takes precedence over :attr:`attr`.
+
+    If a :class:`Field` object ends up with none of these attributes (not at
+    the instance and not at the class level), :meth:`lima.schema.Schema.dump`
+    tries to get the field's value by looking for an attribute of the same name
+    as the field has within the corresponding :class:`lima.schema.Schema`
+    instance.
 
     '''
-    def __init__(self, *, attr=None, get=None):
-        if attr and get:
-            msg = 'attr and get must not be provided at the same time.'
-            raise ValueError(msg)
+    def __init__(self, *, attr=None, get=None, val=None):
+        if sum(v is not None for v in (attr, get, val)) > 1:
+            raise ValueError('attr, get and val are mutually exclusive.')
 
         if attr:
             if not isinstance(attr, str) or not str.isidentifier(attr):
                 msg = 'attr is not a valid Python identifier: {}'.format(attr)
                 raise ValueError(msg)
             self.attr = attr
-        if get:
+        elif get:
             if not callable(get):
                 raise ValueError('get is not callable.')
             self.get = get
+        elif val is not None:
+            self.val = val
 
 
 class Boolean(Field):
@@ -148,9 +159,14 @@ class Nested(Field):
         get: An optional getter function accepting an object as its only
             parameter and returning the field value.
 
+        val: An optional constant value for the field.
+
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
             constructor when the time has come to instance it. Must be empty if
             ``schema`` is a :class:`lima.schema.Schema` object.
+
+    .. versionadded:: 0.3
+        The ``val`` parameter.
 
     Raises:
         ValueError: If ``kwargs`` are specified even if ``schema`` is a
@@ -185,8 +201,8 @@ class Nested(Field):
         user = Nested(attr='login_user', schema=PersonSchema)
 
     '''
-    def __init__(self, *, schema, attr=None, get=None, **kwargs):
-        super().__init__(attr=attr, get=get)
+    def __init__(self, *, schema, attr=None, get=None, val=None, **kwargs):
+        super().__init__(attr=attr, get=get, val=val)
 
         # in case schema is a Schema object
         if isinstance(schema, abc.SchemaABC):
