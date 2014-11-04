@@ -9,8 +9,10 @@ Changelog
 
     While unreleased, the changelog of lima 0.3 is itself subject to change.
 
+- Support constant field values by providing ``val`` to a Field constructor.
+
 - Support dumping of ``OrderedDict`` objects by providing ``ordered=True`` to
-  Schema constructor
+  a Schema constructor
 
 - Add New possibilities to specify a schema's fields:
 
