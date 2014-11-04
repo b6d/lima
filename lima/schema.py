@@ -372,7 +372,15 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         # iterate over fields to fill up entries
         for field_num, (field_name, field) in enumerate(self._fields.items()):
 
-            if hasattr(field, 'get'):
+            if hasattr(field, 'val'):
+                # add constant-field-value-shortcut to self
+                val_name = '__val_{}'.format(field_num)
+                setattr(self, val_name, field.val)
+
+                # later, get value using this shortcut
+                get_val = 'schema.{}'.format(val_name)
+
+            elif hasattr(field, 'get'):
                 #add getter-shortcut to self
                 getter_name = '__get_{}'.format(field_num)
                 setattr(self, getter_name, field.get)
