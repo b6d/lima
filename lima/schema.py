@@ -430,10 +430,11 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 :attr:`many` attribute is used.
 
         Returns:
-            A representation of ``obj`` in the form of a JSON-serializable
-            dict, with each entry corresponding to one of the :class:`Schema`'s
-            fields. (Or a list of such dicts in case a collection of objects
-            was marshalled)
+            A representation of ``obj`` in the form of a JSON-serializable dict
+            (or :class:`collections.OrderedDict` if the Schema was created with
+            ``ordered==True``), with each entry corresponding to one of the
+            :class:`Schema`'s fields. (Or a list of such dicts in case a
+            collection of objects was marshalled)
 
         '''
         dump_function = self._dump_function
