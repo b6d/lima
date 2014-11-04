@@ -37,7 +37,7 @@ def test_simple_fields_attr(cls):
 
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
-def test_simple_fields(cls):
+def test_simple_fields_getter(cls):
     '''Test creation of simple fields with get.'''
     getter = lambda obj: obj.foo
     field = cls(get=getter)
