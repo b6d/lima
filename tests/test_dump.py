@@ -33,6 +33,10 @@ class GetterSchema(schema.Schema):
     full_name = fields.String(get=some_getter)
 
 
+class ConstantValueSchema(schema.Schema):
+    constant = fields.Date(val=date(2014, 10, 20))
+
+
 class KnightSchema(schema.Schema):
     name = fields.String()
 
@@ -120,6 +124,14 @@ def test_getter_field_dump(king):
         'full_name': 'King Arthur'
     }
     assert getter_schema.dump(king) == expected
+
+
+def test_constant_value_field_dump(king):
+    constant_value_schema = ConstantValueSchema()
+    expected = {
+        'constant': '2014-10-20'
+    }
+    assert constant_value_schema.dump(king) == expected
 
 
 def test_many_dump1(knights):
