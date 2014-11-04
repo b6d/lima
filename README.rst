@@ -2,6 +2,8 @@
 lima: Lightweight Marshalling of Python 3 Objects
 =================================================
 
+|pypi_package| |build_status| |doc_status|
+
 **lima** takes arbitrary Python objects and converts them into data structures
 native to Python. The result can easily be serialized into JSON, XML, and all
 sorts of other things. lima is Free Software, lightweight and fast.
@@ -75,5 +77,19 @@ Installation
   $ pip install lima
 
 See the `documentation`_  for more comprehensive install instructions.
+
+
+.. |pypi_package| image:: https://badge.fury.io/py/lima.svg
+    :target: https://badge.fury.io/py/lima
+    :alt: PyPi Package
+
+.. |build_status| image:: https://travis-ci.org/b6d/lima.svg?branch=develop
+    :target: https://travis-ci.org/b6d/lima
+    :alt: Build Status
+
+.. |doc_status| image:: https://readthedocs.org/projects/lima/badge/
+    ?version=latest
+    :target: https://readthedocs.org/projecs/lima/?badge=latest
+    :alt: Documentation Status
 
 .. _documentation: https://lima.readthedocs.org/en/latest/
