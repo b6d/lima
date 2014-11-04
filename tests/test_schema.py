@@ -450,6 +450,7 @@ class TestSchemaDefinition:
         # see if only/exclude don't mess up order
         class TestSchema5(TestSchema1):
             __lima_args__ = {'only': ['three', 'five', 'one']}
+
         class TestSchema6(TestSchema1):
             __lima_args__ = {'exclude': ['four', 'two']}
         test_instance5 = TestSchema5()
@@ -469,6 +470,7 @@ class TestSchemaDefinition:
         assert test_instance6._fields == expected
         assert test_instance1a._fields == expected
         assert test_instance1b._fields == expected
+
 
 class TestSchemaInstantiation:
     '''Class collecting tests of Schema object creation.'''

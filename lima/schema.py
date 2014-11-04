@@ -354,7 +354,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                     ])
                 '''
             )
-            entry_tpl =  '("{key}", {get_val})'
+            entry_tpl = '("{key}", {get_val})'
         else:
             func_tpl = textwrap.dedent(
                 '''\
