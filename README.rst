@@ -79,17 +79,19 @@ Installation
 See the `documentation`_  for more comprehensive install instructions.
 
 
-.. |pypi_package| image:: https://badge.fury.io/py/lima.svg
-    :target: https://badge.fury.io/py/lima
+.. |pypi_package| image:: https://img.shields.io/pypi/v/lima.svg
+    ?style=flat-square
+    :target: https://pypi.python.org/pypi/lima
     :alt: PyPi Package
 
-.. |build_status| image:: https://travis-ci.org/b6d/lima.svg?branch=develop
+.. |build_status| image:: https://img.shields.io/travis/b6d/lima/develop.svg
+    ?style=flat-square
     :target: https://travis-ci.org/b6d/lima
     :alt: Build Status
 
 .. |doc_status| image:: https://readthedocs.org/projects/lima/badge/
-    ?version=latest
-    :target: https://readthedocs.org/projecs/lima/?badge=latest
+    ?version=latest&style=flat-square
+    :target: https://lima.readthedocs.org
     :alt: Documentation Status
 
 .. _documentation: https://lima.readthedocs.org/en/latest/
