@@ -285,6 +285,50 @@ the :meth:`dump` method), or for every call of :meth:`dump` (by specifying
     #  {'last_name': 'Zweig'}]
 
 
+Field Name Mangling
+===================
+
+Fields specified via ``__lima_args__['include']`` can have arbitrary names.
+Fields provided via class attributes have a drawback: class attribute names
+have to be valid Python identifiers.
+
+lima implements a simple name mangling mechanism to allow the specification of
+some common non-Python-identifier field names (like JSON-LD's ``"@id"``) as
+class attributes.
+
+The following table shows how name prefixes will be replaced by lima when
+specifying fields as class attributes:
+
+============ =========================
+name prefix  replacement
+============ =========================
+``'at__'``   ``'@'``
+``'dash__'`` ``'-'``
+``'dot__'``  ``'.'``
+``'hash__'`` ``'#'``
+``'plus__'`` ``'+'``
+``'nil__'``  ``''`` (the emtpy String)
+============ =========================
+
+This enables us to do the following:
+
+.. code-block:: python
+
+    class FancyFieldNamesSchema(Schema):
+        at__foo = fields.String()
+        dash__bar = fields.String()
+        dot__baz = fields.String()
+        hash__qux = fields.String()
+        plus__qup = fields.String()
+        nil__class = fields.String()  # Python Keyword
+
+    list(FancyFieldNamesSchema.__fields__)
+    # ['@foo', '-bar', '.baz', '#qux', '+qup', 'class']
+
+.. note:: Quotes in field names are currently not allowed in lima, regardless
+   of how they are specified.
+
+
 Schema Recap
 ============
 
@@ -295,11 +339,14 @@ Schema Recap
   (``__lima_args__['exclude']``).
 
 - You know three different ways to add fields to schemas (class attributes,
-  ``__lima_args__['include']`` and inheriting from other schemas)
+  ``__lima_args__['include']`` and inheriting from other schemas).
 
 - You are now able to create schemas automatically
-  (``__lima_args__['include']`` with some model-specific code)
+  (``__lima_args__['include']`` with some model-specific code).
 
 - You can fine-tune what gets dumped by a schema object (``only`` and
   ``exclude`` keyword-only arguments) and you can serialize collections of
-  objects (``many=True``)
+  objects (``many=True``).
+
+- You can specify a field named ``'@context'`` as a schema class attribute
+  (using field name mangling: ``'at__context'``).
