@@ -2,7 +2,7 @@
 lima: Lightweight Marshalling of Python 3 Objects
 =================================================
 
-|pypi_package| |build_status| |doc_status|
+|pypi_package| |build_status| |test_coverage| |doc_status|
 
 **lima** takes arbitrary Python objects and converts them into data structures
 native to Python. The result can easily be serialized into JSON, XML, and all
@@ -88,6 +88,11 @@ See the `documentation`_  for more comprehensive install instructions.
     ?style=flat-square
     :target: https://travis-ci.org/b6d/lima
     :alt: Build Status
+
+.. |test_coverage| image:: https://img.shields.io/coveralls/b6d/lima/
+    develop.svg?style=flat-square
+    :target: https://coveralls.io/repos/b6d/lima?branch=develop
+    :alt: Test Coverage
 
 .. |doc_status| image:: https://readthedocs.org/projects/lima/badge/
     ?version=latest&style=flat-square
