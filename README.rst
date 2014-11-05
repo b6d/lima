@@ -2,7 +2,7 @@
 lima: Lightweight Marshalling of Python 3 Objects
 =================================================
 
-|pypi_package| |build_status| |test_coverage| |doc_status|
+|pypi| |docs| |build| |coverage|
 
 **lima** takes arbitrary Python objects and converts them into data structures
 native to Python. The result can easily be serialized into JSON, XML, and all
@@ -79,24 +79,24 @@ Installation
 See the `documentation`_  for more comprehensive install instructions.
 
 
-.. |pypi_package| image:: https://img.shields.io/pypi/v/lima.svg
+.. |pypi| image:: https://img.shields.io/pypi/v/lima.svg
     ?style=flat-square
     :target: https://pypi.python.org/pypi/lima
     :alt: PyPi Package
 
-.. |build_status| image:: https://img.shields.io/travis/b6d/lima/develop.svg
+.. |docs| image:: https://readthedocs.org/projects/lima/badge/
+    ?version=latest&style=flat-square
+    :target: https://lima.readthedocs.org
+    :alt: Documentation Status
+
+.. |build| image:: https://img.shields.io/travis/b6d/lima/develop.svg
     ?style=flat-square
     :target: https://travis-ci.org/b6d/lima
     :alt: Build Status
 
-.. |test_coverage| image:: https://img.shields.io/coveralls/b6d/lima/
-    develop.svg?style=flat-square
+.. |coverage| image:: https://img.shields.io/coveralls/b6d/lima/develop.svg
+    ?style=flat-square
     :target: https://coveralls.io/r/b6d/lima?branch=develop
     :alt: Test Coverage
-
-.. |doc_status| image:: https://readthedocs.org/projects/lima/badge/
-    ?version=latest&style=flat-square
-    :target: https://lima.readthedocs.org
-    :alt: Documentation Status
 
 .. _documentation: https://lima.readthedocs.org/en/latest/
