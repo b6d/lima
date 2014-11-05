@@ -91,7 +91,7 @@ See the `documentation`_  for more comprehensive install instructions.
 
 .. |test_coverage| image:: https://img.shields.io/coveralls/b6d/lima/
     develop.svg?style=flat-square
-    :target: https://coveralls.io/repos/b6d/lima?branch=develop
+    :target: https://coveralls.io/r/b6d/lima?branch=develop
     :alt: Test Coverage
 
 .. |doc_status| image:: https://readthedocs.org/projects/lima/badge/
