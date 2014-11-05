@@ -175,7 +175,7 @@ class SchemaMeta(type):
     defined inside a local namespace, where we wouldn't find it later on).
 
     '''
-    def __new__(metacls, name, bases, namespace):
+    def __new__(mcls, name, bases, namespace):
         # determine Schema base classes
         schema_bases = [b for b in bases if isinstance(b, SchemaMeta)]
 
@@ -237,7 +237,7 @@ class SchemaMeta(type):
         # Create the new class. Note that the superclass gets the altered
         # namespace as a common dict explicitly - we don't need an OrderedDict
         # namespace any more at this point.
-        cls = super().__new__(metacls, name, bases, dict(namespace))
+        cls = super().__new__(mcls, name, bases, dict(namespace))
 
         # Try to register the new class. Classes defined in local namespaces
         # cannot be registerd. We're ok with this.
@@ -250,7 +250,7 @@ class SchemaMeta(type):
         return cls
 
     @classmethod
-    def __prepare__(metacls, name, bases):
+    def __prepare__(mcls, name, bases):
         '''Return an OrderedDict as the class namespace.'''
         return OrderedDict()
 
