@@ -9,6 +9,9 @@ Changelog
 
     While unreleased, the changelog of lima 0.3 is itself subject to change.
 
+- Field name mangling: ``at__foo`` becomes ``@foo`` for fields specified as
+  class attributes.
+
 - Support constant field values by providing ``val`` to a Field constructor.
 
 - Support dumping of ``OrderedDict`` objects by providing ``ordered=True`` to

@@ -85,6 +85,21 @@ class TestHelperFunctions:
         with pytest.raises(TypeError):
             schema._ensure_subset(1, [1, 2, 3])
 
+    def test_mangle_name(self):
+        # this should not raise anything
+        mangle = schema._mangle_name
+        assert mangle('') == ''
+        assert mangle('foo') == 'foo'
+        assert mangle('at_foo') == 'at_foo'
+        assert mangle('at__foo') == '@foo'
+        assert mangle('at___foo') == '@_foo'
+        assert mangle('nil__at__foo') == 'at__foo'
+        assert mangle('whatever__foo') == 'whatever__foo'
+        assert mangle('dash__foo') == '-foo'
+        assert mangle('dot__foo') == '.foo'
+        assert mangle('hash__foo') == '#foo'
+        assert mangle('plus__foo') == '+foo'
+
 
 class TestSchemaDefinition:
     '''Class collecting tests of Schema class definition.'''
@@ -470,6 +485,22 @@ class TestSchemaDefinition:
         assert test_instance6._fields == expected
         assert test_instance1a._fields == expected
         assert test_instance1b._fields == expected
+
+    def test_name_mangling(self):
+        class SomeSchema(schema.Schema):
+            at__foo = fields.String()
+            dash__foo = fields.String()
+            dot__foo = fields.String()
+            hash__foo = fields.String()
+            plus__foo = fields.String()
+            nil__at__foo = fields.String()
+
+        assert '@foo' in SomeSchema.__fields__
+        assert '-foo' in SomeSchema.__fields__
+        assert '.foo' in SomeSchema.__fields__
+        assert '#foo' in SomeSchema.__fields__
+        assert '+foo' in SomeSchema.__fields__
+        assert 'at__foo' in SomeSchema.__fields__
 
 
 class TestSchemaInstantiation:

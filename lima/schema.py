@@ -84,6 +84,28 @@ def _fields_only(fields, only):
     return result
 
 
+def _mangle_name(name):
+    '''Return mangled name ...
+
+    ... where the following name prefixes get replaced:
+
+    - ``'at__'`` with ``'@'``
+    - ``'dash__'`` with ``'-'``
+    - ``'dot__'`` with ``'.'``
+    - ``'hash__'`` with ``'#'``
+    - ``'plus__'`` with ``'+'``
+    - ``'nil__'`` with ``''`` (the empty String)
+
+    '''
+    mapping = dict(at='@', dash='-', dot='.', hash='#', plus='+', nil='')
+    if '__' not in name:
+        return name
+    before, after = name.split('__', 1)
+    if before not in mapping:
+        return name
+    return mapping[before] + after
+
+
 # Schema Metaclass ############################################################
 
 class SchemaMeta(type):
@@ -172,7 +194,7 @@ class SchemaMeta(type):
         cls_fields = OrderedDict()
         for k, v in list(namespace.items()):
             if isinstance(v, abc.FieldABC):
-                cls_fields[k] = namespace.pop(k)
+                cls_fields[_mangle_name(k)] = namespace.pop(k)
 
         # update fields with class-var-fields
         fields.update(cls_fields)
