@@ -2,6 +2,7 @@
 import collections.abc
 import textwrap
 from collections import OrderedDict
+from keyword import iskeyword
 
 from lima import abc
 from lima import exc
@@ -412,8 +413,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
             elif hasattr(field, 'attr'):
                 # try to guard against code injection via malformed attr
-                if not str.isidentifier(field.attr):
-                    msg = 'Not a valid identifier: "{}"'
+                if not str.isidentifier(field.attr) or iskeyword(field.attr):
+                    msg = 'Not a valid attribute name: {!r}'
                     raise ValueError(msg.format(field.attr))
 
                 # later, get value using attr
@@ -421,8 +422,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
             else:
                 # try to guard against code injection via malformed field_name
-                if not str.isidentifier(field_name):
-                    msg = 'Not a valid identifier: "{}"'
+                if not str.isidentifier(field_name) or iskeyword(field_name):
+                    msg = 'Field name leads to invalid attribute name: {!r}'
                     raise ValueError(msg.format(field_name))
 
                 # later, get value using field_name

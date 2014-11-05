@@ -488,12 +488,13 @@ class TestSchemaDefinition:
 
     def test_name_mangling(self):
         class SomeSchema(schema.Schema):
-            at__foo = fields.String()
-            dash__foo = fields.String()
-            dot__foo = fields.String()
-            hash__foo = fields.String()
-            plus__foo = fields.String()
-            nil__at__foo = fields.String()
+            at__foo = fields.String(attr='foo')
+            dash__foo = fields.String(attr='foo')
+            dot__foo = fields.String(attr='foo')
+            hash__foo = fields.String(attr='foo')
+            plus__foo = fields.String(attr='foo')
+            nil__at__foo = fields.String(attr='foo')
+            nil__class = fields.String(attr='foo')
 
         assert '@foo' in SomeSchema.__fields__
         assert '-foo' in SomeSchema.__fields__
@@ -501,6 +502,7 @@ class TestSchemaDefinition:
         assert '#foo' in SomeSchema.__fields__
         assert '+foo' in SomeSchema.__fields__
         assert 'at__foo' in SomeSchema.__fields__
+        assert 'class' in SomeSchema.__fields__
 
 
 class TestSchemaInstantiation:
@@ -629,6 +631,32 @@ class TestSchemaInstantiation:
             __lima_args__ = {
                 'include': {
                     'not@an-identifier': fields.String()
+                }
+            }
+
+        with pytest.raises(ValueError):
+            test_schema = TestSchema()
+
+    def test_fail_on_keyword_attr_name(self):
+        '''Test if providing a non-identifier attr name raises an error'''
+        class TestSchema(schema.Schema):
+            foo = fields.String()
+            foo.attr = 'class'  # 'class' is a keyword
+
+        with pytest.raises(ValueError):
+            test_schema = TestSchema()
+
+    def test_fail_on_keyword_field_name_without_attr(self):
+        '''Test if providing a non-identifier field name raises an error ...
+
+        ... for the case where the field name would be used as attr name
+        (because field has neither getter nor attr name)
+
+        '''
+        class TestSchema(schema.Schema):
+            __lima_args__ = {
+                'include': {
+                    'class': fields.String()
                 }
             }
 
