@@ -94,8 +94,8 @@ the getter via the ``get`` parameter:
         )
 
 
-Constant Field Data
--------------------
+Constant Field Values
+---------------------
 
 Sometimes a field's data is always the same. For example, if a schema provides
 a field for type information, this field will most likely always have the same
@@ -252,8 +252,8 @@ But this doesn't mean it can't be done. You'll just have to do it yourself. The
 Fields Recap
 ============
 
-- You now know how a field gets its data (in order of precedence: getter >
-  ``attr`` parameter > field name).
+- You now know how it's determined where a field's data comes from. (from least
+  to highest precedence: field name < attr < getter < constant field value.
 
 - You know how a field presents its data (:meth:`pack` method).
 
