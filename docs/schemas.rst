@@ -316,14 +316,11 @@ This enables us to do the following:
 
     class FancyFieldNamesSchema(Schema):
         at__foo = fields.String()
-        dash__bar = fields.String()
-        dot__baz = fields.String()
-        hash__qux = fields.String()
-        plus__qup = fields.String()
+        hash__bar = fields.String()
         nil__class = fields.String()  # Python Keyword
 
     list(FancyFieldNamesSchema.__fields__)
-    # ['@foo', '-bar', '.baz', '#qux', '+qup', 'class']
+    # ['@foo', '#bar', 'class']
 
 .. note:: Quotes in field names are currently not allowed in lima, regardless
    of how they are specified.
