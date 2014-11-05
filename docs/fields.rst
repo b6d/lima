@@ -8,8 +8,8 @@ follow only the most basic protocol, they are rather powerful.
 
 .. _field_data_sources:
 
-What Data a Field presents
-==========================
+How a Filed gets its Data
+=========================
 
 The :class:`PersonSchema` from the last chapter contains three field objects
 named *first_name,* *last_name* and *date_of_birth.* These get their data from
