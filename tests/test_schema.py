@@ -95,8 +95,10 @@ class TestHelperFunctions:
         assert mangle('at___foo') == '@_foo'
         assert mangle('nil__at__foo') == 'at__foo'
         assert mangle('whatever__foo') == 'whatever__foo'
-        assert mangle('hash__bar') == '#bar'
-        assert mangle('plus__baz') == '+baz'
+        assert mangle('dash__foo') == '-foo'
+        assert mangle('dot__foo') == '.foo'
+        assert mangle('hash__foo') == '#foo'
+        assert mangle('plus__foo') == '+foo'
 
 
 class TestSchemaDefinition:
@@ -487,14 +489,18 @@ class TestSchemaDefinition:
     def test_name_mangling(self):
         class SomeSchema(schema.Schema):
             at__foo = fields.String()
-            hash__bar = fields.String()
-            plus__baz = fields.String()
-            nil__at__qux = fields.String()
+            dash__foo = fields.String()
+            dot__foo = fields.String()
+            hash__foo = fields.String()
+            plus__foo = fields.String()
+            nil__at__foo = fields.String()
 
         assert '@foo' in SomeSchema.__fields__
-        assert '#bar' in SomeSchema.__fields__
-        assert '+baz' in SomeSchema.__fields__
-        assert 'at__qux' in SomeSchema.__fields__
+        assert '-foo' in SomeSchema.__fields__
+        assert '.foo' in SomeSchema.__fields__
+        assert '#foo' in SomeSchema.__fields__
+        assert '+foo' in SomeSchema.__fields__
+        assert 'at__foo' in SomeSchema.__fields__
 
 
 class TestSchemaInstantiation:

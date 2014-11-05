@@ -90,12 +90,14 @@ def _mangle_name(name):
     ... where the following name prefixes get replaced:
 
     - ``'at__'`` with ``'@'``
+    - ``'dash__'`` with ``'-'``
+    - ``'dot__'`` with ``'.'``
     - ``'hash__'`` with ``'#'``
     - ``'plus__'`` with ``'+'``
     - ``'nil__'`` with ``''`` (the empty String)
 
     '''
-    mapping = dict(at='@', hash='#', nil='', plus='+')
+    mapping = dict(at='@', dash='-', dot='.', hash='#', plus='+', nil='')
     if '__' not in name:
         return name
     before, after = name.split('__', 1)
