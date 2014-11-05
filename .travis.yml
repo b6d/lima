@@ -3,5 +3,9 @@ language: python
 python:
   - '3.3'
   - '3.4'
+install:
+  - pip install coveralls
 script:
-  - python setup.py test
+  - coverage run --source=lima setup.py test
+after_success:
+  - coveralls
