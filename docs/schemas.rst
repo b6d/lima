@@ -315,14 +315,21 @@ This enables us to do the following:
 .. code-block:: python
 
     class FancyFieldNamesSchema(Schema):
-        at__foo = fields.String()
-        hash__bar = fields.String()
-        nil__class = fields.String()  # Python Keyword
+        at__foo = fields.String(attr='foo')
+        hash__bar = fields.String(attr='bar')
+        nil__class = fields.String(attr='cls')  # Python Keyword
 
     list(FancyFieldNamesSchema.__fields__)
     # ['@foo', '#bar', 'class']
 
-.. note:: Quotes in field names are currently not allowed in lima, regardless
+.. note::
+
+   When using field names that aren't Python identifiers, lima obviously can't
+   look for attributes with those same names, so make sure to specify
+   explicitly how the data for these fields should be determined (see
+   :ref:`field_data_sources`).
+
+   Also, quotes in field names are currently not allowed in lima, regardless
    of how they are specified.
 
 

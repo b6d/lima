@@ -6,6 +6,8 @@ Fields are the basic building blocks of a Schema. Even though lima fields
 follow only the most basic protocol, they are rather powerful.
 
 
+.. _field_data_sources:
+
 What Data a Field presents
 ==========================
 
