@@ -213,7 +213,7 @@ class Nested(Field):
             self.schema_inst = schema
 
         # in case schema is a schema class
-        elif (isinstance(schema, type) and issubclass(schema, abc.SchemaABC)):
+        elif isinstance(schema, type) and issubclass(schema, abc.SchemaABC):
             self.schema_inst = schema(**kwargs)
 
         # in case schema is a schema name: save args for later instantiation
