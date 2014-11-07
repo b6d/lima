@@ -404,30 +404,24 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 get_val = 'schema.{}'.format(val_name)
 
             elif hasattr(field, 'get'):
-                #add getter-shortcut to self
+                # add getter-shortcut to self
                 getter_name = '__get_{}'.format(field_num)
                 setattr(self, getter_name, field.get)
 
                 # later, get value by calling getter-shortcut
                 get_val = 'schema.{}(obj)'.format(getter_name)
 
-            elif hasattr(field, 'attr'):
-                # try to guard against code injection via malformed attr
-                if not str.isidentifier(field.attr) or iskeyword(field.attr):
+            else:
+                # neither constant val nor getter: try to get value via attr
+                # (if no attr name is specified, use field name as attr name)
+                attr = getattr(field, 'attr', field_name)
+
+                if not str.isidentifier(attr) or iskeyword(attr):
                     msg = 'Not a valid attribute name: {!r}'
-                    raise ValueError(msg.format(field.attr))
+                    raise ValueError(msg.format(attr))
 
                 # later, get value using attr
-                get_val = 'obj.{}'.format(field.attr)
-
-            else:
-                # try to guard against code injection via malformed field_name
-                if not str.isidentifier(field_name) or iskeyword(field_name):
-                    msg = 'Field name leads to invalid attribute name: {!r}'
-                    raise ValueError(msg.format(field_name))
-
-                # later, get value using field_name
-                get_val = 'obj.{}'.format(field_name)
+                get_val = 'obj.{}'.format(attr)
 
             if hasattr(field, 'pack'):
                 # add pack-shortcut to self
