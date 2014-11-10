@@ -8,7 +8,7 @@ follow only the most basic protocol, they are rather powerful.
 
 .. _field_data_sources:
 
-How a Filed gets its Data
+How a Field gets its Data
 =========================
 
 The :class:`PersonSchema` from the last chapter contains three field objects
