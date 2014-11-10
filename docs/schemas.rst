@@ -2,7 +2,7 @@
 Working with Schemas
 ====================
 
-Now that we know about fields, let's focus on schemas:
+Schemas collect fields for object serialization.
 
 
 Defining Schemas
