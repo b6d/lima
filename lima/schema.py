@@ -1,72 +1,51 @@
 '''Schema class and related code.'''
-import collections.abc
+import keyword
 import textwrap
 from collections import OrderedDict
-from keyword import iskeyword
 
 from lima import abc
 from lima import exc
 from lima import registry
+from lima import util
 
 
 # Helper functions ############################################################
 
-def _into_list_if_str(obj):
-    '''Return [obj] if obj is a string, else return obj unchanged.
+def _fields_from_bases(bases):
+    '''Return fields determined from a list of base classes'''
+    fields = OrderedDict()
 
-    This is for convenience: It allows to specify a single string (like
-    ``'foo'``) instead of a list containing a single string (like ``['foo']``)
-    in cases where iterables of strings are required.
+    # determine base classes that are actually Schemas by checking if they
+    # inherit from abc.SchemaABC
+    schema_bases = [b for b in bases if issubclass(b, abc.SchemaABC) and
+                                        not b == abc.SchemaABC]
 
-    It is also to guard against iterating over the individual characters of a
-    single string when forgetting the brackets.
+    # Add fields of base schemas. Bases listed first have precedence (to
+    # reflect how python inherits class attributes). Their items are also
+    # placed first in the fields OrderedDict (to reflect the order in which the
+    # bases are written down in the class definition).
+    for base in schema_bases:
+        for k, v in base.__fields__.items():
+            if k not in fields:
+                fields[k] = v
 
-    '''
-    return [obj] if isinstance(obj, str) else obj
-
-
-def _ensure_iterable(obj):
-    '''Raise TypeError if obj is not iterable.'''
-    if not isinstance(obj, collections.abc.Iterable):
-        msg = 'value is not iterable.'
-        raise TypeError(msg)
-
-
-def _ensure_mapping(obj):
-    '''Raise TypeError if obj is no mapping'''
-    if not isinstance(obj, collections.abc.Mapping):
-        msg = 'value is not a mapping.'
-        raise TypeError(msg)
+    return fields
 
 
-def _ensure_disjoint(a, b):
-    '''Raise ValueError if collections a and b are not disjoint.
-
-    For mappings, only the keys are considered.
-
-    '''
-    common = set(a) & set(b)
-    if common:
-        msg = 'Collections contain common element(s).'
-        raise ValueError('{}: {}'.format(msg, common))
-
-
-def _ensure_subset(a, b):
-    '''Raise ValueError if collection a is no subset of collection b.
-
-    For mappings, only the keys are considered.
-
-    '''
-    missing = set(a) - set(b)
-    if missing:
-        msg = 'Collection contains element(s) not present in other.'
-        raise ValueError('{}: {}'.format(msg, missing))
+def _fields_include(fields, include):
+    '''Return a copy of fields with fields in include included.'''
+    util.ensure_mapping(include)
+    util.ensure_only_instances_of(include, str)
+    util.ensure_only_instances_of(include.values(), abc.FieldABC)
+    result = fields.copy()
+    result.update(include)
+    return result
 
 
 def _fields_exclude(fields, remove):
     '''Return a copy of fields with fields mentioned in exclude missing.'''
-    _ensure_iterable(remove)
-    _ensure_subset(remove, fields)
+    util.ensure_only_instances_of(remove, str)
+    util.ensure_subset_of(remove, fields)
     result = OrderedDict()
     for k, v in fields.items():
         if k not in remove:
@@ -76,8 +55,8 @@ def _fields_exclude(fields, remove):
 
 def _fields_only(fields, only):
     '''Return a copy of fields containing only fields mentioned in only.'''
-    _ensure_iterable(only)
-    _ensure_subset(only, fields)
+    util.ensure_only_instances_of(only, str)
+    util.ensure_subset_of(only, fields)
     result = OrderedDict()
     for k, v in fields.items():
         if k in only:
@@ -86,16 +65,11 @@ def _fields_only(fields, only):
 
 
 def _mangle_name(name):
-    '''Return mangled name ...
+    '''Return mangled field name.
 
-    ... where the following name prefixes get replaced:
-
-    - ``'at__'`` with ``'@'``
-    - ``'dash__'`` with ``'-'``
-    - ``'dot__'`` with ``'.'``
-    - ``'hash__'`` with ``'#'``
-    - ``'plus__'`` with ``'+'``
-    - ``'nil__'`` with ``''`` (the empty String)
+    Mangled field names have some name prefixes replaced with others (see
+    mapping in code). This is to allow some field names with special chars in
+    them to be defined via Schema class attributes.
 
     '''
     mapping = dict(at='@', dash='-', dot='.', hash='#', plus='+', nil='')
@@ -127,7 +101,7 @@ class SchemaMeta(type):
     - The :attr:`__fields__` of all base classes are copied (with base classes
       specified first having precedence).
 
-      Note that the fields themselves are not copied - changing an inherited
+      Note that the fields themselves are *not* copied - changing an inherited
       field would change this field for all base classes referencing this field
       as well. In general it is *strongly* suggested to treat fields as
       immutable.
@@ -140,16 +114,15 @@ class SchemaMeta(type):
       class namespace and evaluated as follows:
 
       - Fields specified via ``__lima_args__['include']`` (an optional mapping
-        of field names to fields) are added to :attr:`__fields__`, overriding
-        any fields of the same name therein.
-
-        If two fields of the same name are defined, once as a class variable,
-        and once via ``__lima_args__['include']``, a :exc:`ValueError` is
-        raised.
+        of field names to fields) are inserted into :attr:`__fields__`.
+        overriding any fields of the same name therein.
 
         If the order of your fields is important, make sure that
         ``__lima_args__['include']`` is of type
         :class:`collections.OrderedDict` or similar.
+
+        New fields in ``__lima_args__['include']__`` are inserted at the
+        position where ``__lima_args__`` is specified in the class.
 
       - Fields named in an optional sequence ``__lima_args__['exclude']`` are
         removed from :attr:`__fields__`. If only one field is to be removed,
@@ -175,82 +148,63 @@ class SchemaMeta(type):
     defined inside a local namespace, where we wouldn't find it later on).
 
     '''
-    def __new__(mcls, name, bases, namespace):
-        # determine Schema base classes
-        schema_bases = [b for b in bases if isinstance(b, SchemaMeta)]
+    def __new__(metacls, name, bases, namespace):
 
-        # this will become the __fields__ attribute of the new class
-        fields = OrderedDict()
+        # aggregate fields from base classes
+        fields = _fields_from_bases(bases)
 
-        # Add fields of base classes. Bases listed first have precedence (to
-        # reflect how python inherits class attributes). Their items are also
-        # placed first in the fields OrderedDict (to reflect the order in which
-        # the bases are written down in the class definition).
-        for base in schema_bases:
-            for k, v in base.__fields__.items():
-                if k not in fields:
-                    fields[k] = v
+        # pop/verify __lima_args__
+        args = namespace.get('__lima_args__', {})
+        with util.complain_about('__lima_args__'):
+            util.ensure_mapping(args)
+            util.ensure_subset_of(args, {'include', 'exclude', 'only'})
+            util.ensure_only_one_of(args, {'exclude', 'only'})
 
-        # pop fields defined as class vars from the new class's namespace
-        cls_fields = OrderedDict()
+        # determine individual args (include, exclude, only)
+        include = args.get('include', {})
+        exclude = util.vector_context(args.get('exclude', []))
+        only = util.vector_context(args.get('only', []))
+
+        # loop over copy of namespace items (we mutate namespace in this loop)
         for k, v in list(namespace.items()):
-            if isinstance(v, abc.FieldABC):
-                cls_fields[_mangle_name(k)] = namespace.pop(k)
+            if k == '__lima_args__':
+                # at position of __lima_args__: insert include (if specified)
+                if include:
+                    with util.complain_about("__lima_args__['include']"):
+                        fields = _fields_include(fields,  include)
+            elif isinstance(v, abc.FieldABC):
+                # if a field was found: move it from namespace into fields
+                # (also, mangle its name to allow some special field names)
+                fields[_mangle_name(k)] = namespace.pop(k)
 
-        # update fields with class-var-fields
-        fields.update(cls_fields)
-
-        # pop and evaluate __lima_args__ (if specified)
-        if '__lima_args__' in namespace:
-            args = namespace.pop('__lima_args__')
-
-            # fail on unknown args
-            unknown_args = set(args) - {'include', 'exclude', 'only'}
-            if unknown_args:
-                msg = 'Illegal key(s) for __lima_args__: {}'
-                raise ValueError(msg.format(unknown_args))
-
-            # fail on exclude AND only specified
-            if 'exclude' in args and 'only' in args:
-                msg = ("__lima_args__: can't specify exclude "
-                       "and only at the same time.")
-                raise ValueError(msg)
-
-            # add fields specified via include (raise error on ambiguity)
-            if 'include' in args:
-                include = args['include']
-                _ensure_mapping(include)
-                _ensure_disjoint(cls_fields, include)
-                fields.update(include)
-
-            # remove 'exclude' fields or just keep 'only' fields
-            if 'exclude' in args:
-                exclude = _into_list_if_str(args['exclude'])
+        if exclude:
+            with util.complain_about('__lima_args__["exclude"]'):
                 fields = _fields_exclude(fields, exclude)
-            elif 'only' in args:
-                only = _into_list_if_str(args['only'])
+        elif only:
+            with util.complain_about('__lima_args__["only"]'):
                 fields = _fields_only(fields, only)
 
-        # set new _fields class variable
+        # add __fields__ to namespace
         namespace['__fields__'] = fields
+
+        # remove __lima_args__ from namespace (if present)
+        namespace.pop('__lima_args__', None)
 
         # Create the new class. Note that the superclass gets the altered
         # namespace as a common dict explicitly - we don't need an OrderedDict
         # namespace any more at this point.
-        cls = super().__new__(mcls, name, bases, dict(namespace))
+        cls = super().__new__(metacls, name, bases, dict(namespace))
 
         # Try to register the new class. Classes defined in local namespaces
         # cannot be registerd. We're ok with this.
-        try:
+        with util.suppress(exc.RegisterLocalClassError):
             registry.global_registry.register(cls)
-        except exc.RegisterLocalClassError:
-            pass
 
         # return class
         return cls
 
     @classmethod
-    def __prepare__(mcls, name, bases):
+    def __prepare__(metacls, name, bases):
         '''Return an OrderedDict as the class namespace.'''
         return OrderedDict()
 
@@ -337,17 +291,17 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if exclude and only:
             msg = "Can't specify exclude and only at the same time."
             raise ValueError(msg)
-        if include:
-            _ensure_mapping(include)
-            fields.update(include)
 
-        # remove 'exclude' fields or just keep 'only' fields
+        if include:
+            with util.complain_about('include'):
+                fields = _fields_include(fields, include)
+
         if exclude:
-            exclude = _into_list_if_str(exclude)
-            fields = _fields_exclude(fields, exclude)
+            with util.complain_about('exclude'):
+                fields = _fields_exclude(fields, util.vector_context(exclude))
         elif only:
-            only = _into_list_if_str(only)
-            fields = _fields_only(fields, only)
+            with util.complain_about('only'):
+                fields = _fields_only(fields, util.vector_context(only))
 
         self._fields = fields
         self._ordered = ordered
@@ -404,30 +358,24 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 get_val = 'schema.{}'.format(val_name)
 
             elif hasattr(field, 'get'):
-                #add getter-shortcut to self
+                # add getter-shortcut to self
                 getter_name = '__get_{}'.format(field_num)
                 setattr(self, getter_name, field.get)
 
                 # later, get value by calling getter-shortcut
                 get_val = 'schema.{}(obj)'.format(getter_name)
 
-            elif hasattr(field, 'attr'):
-                # try to guard against code injection via malformed attr
-                if not str.isidentifier(field.attr) or iskeyword(field.attr):
+            else:
+                # neither constant val nor getter: try to get value via attr
+                # (if no attr name is specified, use field name as attr name)
+                attr = getattr(field, 'attr', field_name)
+
+                if not str.isidentifier(attr) or keyword.iskeyword(attr):
                     msg = 'Not a valid attribute name: {!r}'
-                    raise ValueError(msg.format(field.attr))
+                    raise ValueError(msg.format(attr))
 
                 # later, get value using attr
-                get_val = 'obj.{}'.format(field.attr)
-
-            else:
-                # try to guard against code injection via malformed field_name
-                if not str.isidentifier(field_name) or iskeyword(field_name):
-                    msg = 'Field name leads to invalid attribute name: {!r}'
-                    raise ValueError(msg.format(field_name))
-
-                # later, get value using field_name
-                get_val = 'obj.{}'.format(field_name)
+                get_val = 'obj.{}'.format(attr)
 
             if hasattr(field, 'pack'):
                 # add pack-shortcut to self

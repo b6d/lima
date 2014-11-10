@@ -1,7 +1,9 @@
 '''The lima exception hierarchy.
 
-Currently this module only holds Exceptions related to :mod:`lima.registry`,
-but this might change in the future.
+.. note::
+
+    Currently this module only holds Exceptions related to
+    :mod:`lima.registry`, but this might change in the future.
 
 '''
 

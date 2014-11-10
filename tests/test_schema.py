@@ -35,55 +35,8 @@ def person_schema_cls(str_field, int_field, date_field):
 class NonLocalSchema(schema.Schema):
     foo = fields.String()
 
-
 class TestHelperFunctions:
     '''Class collecting tests of helper functions.'''
-
-    def test_into_list_if_str(self):
-        assert schema._into_list_if_str([]) == []
-        assert schema._into_list_if_str(42) == 42
-        assert schema._into_list_if_str(['foo']) == ['foo']
-        assert schema._into_list_if_str('bar') == ['bar']
-
-    def test_ensure_iterable(self):
-        # none of these should raise anything
-        schema._ensure_iterable([1, 2, 3])
-        schema._ensure_iterable(range(10))
-        schema._ensure_iterable(i for i in range(10))
-
-        with pytest.raises(TypeError):
-            schema._ensure_iterable(3)
-
-    def test_ensure_mapping(self):
-        from collections import defaultdict
-
-        # none of these should raise anything
-        schema._ensure_mapping({})
-        schema._ensure_mapping({'a': 1})
-        schema._ensure_mapping(defaultdict(lambda: 1))
-
-        with pytest.raises(TypeError):
-            schema._ensure_mapping(set([1, 2, 3]))
-
-        with pytest.raises(TypeError):
-            schema._ensure_mapping(None)
-
-    def test_ensure_disjoint(self):
-        # this should not raise anything
-        schema._ensure_disjoint([1, 2], [3, 4])
-
-        with pytest.raises(ValueError):
-            schema._ensure_disjoint([1, 2], (2, 3))
-
-    def test_ensure_subset(self):
-        # this should not raise anything
-        schema._ensure_subset([1, 2], [0, 1, 2, 3, 4])
-
-        with pytest.raises(ValueError):
-            schema._ensure_subset([1, 'foo'], [1, 2, 3])
-
-        with pytest.raises(TypeError):
-            schema._ensure_subset(1, [1, 2, 3])
 
     def test_mangle_name(self):
         # this should not raise anything
@@ -160,7 +113,7 @@ class TestSchemaDefinition:
             class WrongSchema2(schema.Schema):
                 foo = str_field
                 __lima_args__ = {
-                    'exclude': 42  # 42 is not a list
+                    'exclude': 42  # can't exclude this
                 }
 
         with pytest.raises(ValueError):
@@ -330,17 +283,6 @@ class TestSchemaDefinition:
         assert 'bar' not in TestSchema.__fields__
         assert 'baz' not in TestSchema.__fields__
 
-    def test_fail_on_duplicate_fields(self, str_field, int_field):
-        '''Test if duplicate field definition raises an error.'''
-        with pytest.raises(ValueError):
-            class TestSchema(schema.Schema):
-                __lima_args__ = {
-                    'include': {
-                        'foo': str_field,
-                    }
-                }
-                foo = int_field
-
     def test_fail_on_nonexistent_fields(self, str_field, int_field):
         '''Test if mentining nonexistent field in exlcude raises an error.'''
         with pytest.raises(ValueError):
@@ -486,6 +428,36 @@ class TestSchemaDefinition:
         assert test_instance1a._fields == expected
         assert test_instance1b._fields == expected
 
+        # see if include gets placed at the position of __lima_args__
+        class TestSchema7(schema.Schema):
+            one = field1
+            two = field2
+            __lima_args__ = {
+                'include': OrderedDict(
+                    [
+                        ('three', field3),
+                        ('four', field4)
+                    ]
+                ),
+                'exclude': 'six'
+            }
+            five = field5
+            six = field6
+            seven = field7
+        test_instance7 = TestSchema7()
+        expected = OrderedDict(
+            [
+                ('one', field1),
+                ('two', field2),
+                ('three', field3),
+                ('four', field4),
+                ('five', field5),
+                ('seven', field7),
+            ]
+        )
+        assert TestSchema7.__fields__ == expected
+        assert test_instance7._fields == expected
+
     def test_name_mangling(self):
         class SomeSchema(schema.Schema):
             at__foo = fields.String(attr='foo')
@@ -601,7 +573,7 @@ class TestSchemaInstantiation:
             person_schema = person_schema_cls(exclude=42)
 
     def test_fail_on_only_wrong_type(self, person_schema_cls):
-        '''Test if specifying the wrong type for exclude raises an error.'''
+        '''Test if specifying the wrong type for only raises an error.'''
         with pytest.raises(TypeError):
             person_schema = person_schema_cls(only=42)
 
