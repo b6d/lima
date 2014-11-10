@@ -258,7 +258,7 @@ type_mapping = {
     int: Integer,
     str: String,
     datetime.date: Date,
-    datetime.datetime: Date,
+    datetime.datetime: DateTime,
 }
 '''A mapping of native Python types to :class:`Field` classes.
 
