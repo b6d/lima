@@ -16,6 +16,25 @@ def complain_about(name):
         raise
 
 
+class suppress:
+    '''Context manager to suppress specified exceptions
+
+    This context manager is taken directly from the Python 3.4 standard library
+    to get support for Python 3.3.
+
+    See https://docs.python.org/3.4/library/contextlib.html#contextlib.suppress
+
+    '''
+    def __init__(self, *exceptions):
+        self._exceptions = exceptions
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exctype, excinst, exctb):
+        return exctype is not None and issubclass(exctype, self._exceptions)
+
+
 def vector_context(obj):
     '''Return obj if obj is a vector, or [obj] in case obj is a scalar.
 
