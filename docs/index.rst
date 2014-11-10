@@ -81,6 +81,7 @@ Documentation
    schemas
    fields
    nested_data
+   advanced
    api
    project_info
    changelog
