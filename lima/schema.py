@@ -292,17 +292,17 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if exclude and only:
             msg = "Can't specify exclude and only at the same time."
             raise ValueError(msg)
-        if include:
-            util.ensure_mapping(include)
-            fields.update(include)
 
-        # remove 'exclude' fields or just keep 'only' fields
+        if include:
+            with util.complain_about('include'):
+                fields = _fields_include(fields, include)
+
         if exclude:
-            exclude = util.vector_context(exclude)
-            fields = _fields_exclude(fields, exclude)
+            with util.complain_about('exclude'):
+                fields = _fields_exclude(fields, util.vector_context(exclude))
         elif only:
-            only = util.vector_context(only)
-            fields = _fields_only(fields, only)
+            with util.complain_about('only'):
+                fields = _fields_only(fields, util.vector_context(only))
 
         self._fields = fields
         self._ordered = ordered
