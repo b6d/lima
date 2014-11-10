@@ -32,5 +32,10 @@ class SchemaABC:
     (Usually, it's a *way* better Idea to subclass :class:`lima.schema.Schema`
     directly)
 
+    Note that every Schema class must provide a mapping :attr:`__fields__` as a
+    class attribute. Typically, this is taken care of by
+    :class:`lima.schema.SchemaMeta` when subclassing
+    :class:`lima.schema.Schema`.
+
     '''
     pass
