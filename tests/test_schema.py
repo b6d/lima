@@ -428,6 +428,36 @@ class TestSchemaDefinition:
         assert test_instance1a._fields == expected
         assert test_instance1b._fields == expected
 
+        # see if include gets placed at the position of __lima_args__
+        class TestSchema7(schema.Schema):
+            one = field1
+            two = field2
+            __lima_args__ = {
+                'include': OrderedDict(
+                    [
+                        ('three', field3),
+                        ('four', field4)
+                    ]
+                ),
+                'exclude': 'six'
+            }
+            five = field5
+            six = field6
+            seven = field7
+        test_instance7 = TestSchema7()
+        expected = OrderedDict(
+            [
+                ('one', field1),
+                ('two', field2),
+                ('three', field3),
+                ('four', field4),
+                ('five', field5),
+                ('seven', field7),
+            ]
+        )
+        assert TestSchema7.__fields__ == expected
+        assert test_instance7._fields == expected
+
     def test_name_mangling(self):
         class SomeSchema(schema.Schema):
             at__foo = fields.String(attr='foo')
