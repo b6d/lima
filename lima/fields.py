@@ -252,7 +252,7 @@ class Nested(Field):
         return self.schema_inst.dump(val) if val is not None else None
 
 
-type_mapping = {
+TYPE_MAPPING = {
     bool: Boolean,
     float: Float,
     int: Integer,
@@ -265,4 +265,10 @@ type_mapping = {
 This can be used to automatically create fields for objects you know the
 attribute's types of.
 
+'''
+type_mapping = TYPE_MAPPING
+'''An alias for :attr:`TYPE_MAPPING`.
+
+.. deprecated:: 0.3
+    Will be removed in 0.4. Use :attr:`TYPE_MAPPING` instead.
 '''
