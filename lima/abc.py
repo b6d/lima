@@ -1,23 +1,18 @@
-'''Abstract base classes for fields and schemas.
-
-.. note::
-
-   :mod:`lima.abc` is needed to avoid circular imports of fields needing to
-   know about schemas and vice versa. The base classes are used for internal
-   type checks. For users of the library there should be no need to use
-   :mod:`lima.abc` directly.
-
-'''
+'''Abstract base classes for fields and schemas.'''
 
 
 class FieldABC:
     '''Abstract base class for fields.
 
-    Inheriting from :class:`FieldABC` marks a class as a field for internal
-    type checks.
+    Being an instance of :class:`FieldABC` marks a class as a field for
+    internal type checks. You can use this class to implement your own type
+    checks as well.
 
-    (Usually, it's a *way* better Idea to subclass :class:`lima.fields.Field`
-    directly)
+    .. note::
+
+        To create new fields, it's a better Idea to subclass
+        :class:`lima.fields.Field` directly instead of implementing FieldABC on
+        your own.
 
     '''
     pass
@@ -26,16 +21,15 @@ class FieldABC:
 class SchemaABC:
     '''Abstract base class for schemas.
 
-    Inheriting from :class:`SchemaABC` marks a class as a schema for internal
-    type checks.
+    Being an instance of :class:`SchemaABC` marks a class as a schema for
+    internal type checks. You can use this class to implement your own type
+    checks as well.
 
-    (Usually, it's a *way* better Idea to subclass :class:`lima.schema.Schema`
-    directly)
+    .. note::
 
-    Note that every Schema class must provide a mapping :attr:`__fields__` as a
-    class attribute. Typically, this is taken care of by
-    :class:`lima.schema.SchemaMeta` when subclassing
-    :class:`lima.schema.Schema`.
+        To create new schemas, it's a *way* better Idea to subclass
+        :class:`lima.schema.Schema` directly instead of implementing SchemaABC
+        on your own.
 
     '''
     pass

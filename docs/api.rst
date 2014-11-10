@@ -4,12 +4,28 @@
 The lima API
 ============
 
-.. module:: lima
-
 Please note that the lima API uses a relatively uncommon feature of Python 3:
 *Keyword-only arguments.*
 
 .. include:: keyword_only_args.rst.inc
+
+
+.. _api_abc:
+
+lima.abc
+========
+
+.. automodule:: lima.abc
+    :members:
+
+
+.. _api_exc:
+
+lima.exc
+========
+
+.. automodule:: lima.exc
+    :members:
 
 
 .. _api_fields:
@@ -25,33 +41,6 @@ lima.fields
         :annotation: =dict(...)
 
 
-.. _api_schema:
-
-lima.schema
-===========
-
-.. automodule:: lima.schema
-   :members:
-
-
-.. _api_exc:
-
-lima.exc
-=============
-
-.. automodule:: lima.exc
-    :members:
-
-
-.. _api_abc:
-
-lima.abc
-=============
-
-.. automodule:: lima.abc
-    :members:
-
-
 .. _api_registry:
 
 lima.registry
@@ -63,3 +52,21 @@ lima.registry
 
     .. autodata:: lima.registry.global_registry
         :annotation: =lima.registry.Registry()
+
+
+.. _api_schema:
+
+lima.schema
+===========
+
+.. automodule:: lima.schema
+   :members:
+
+
+.. _api_util:
+
+lima.util
+=========
+
+.. automodule:: lima.util
+   :members:

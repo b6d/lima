@@ -1,7 +1,7 @@
 '''Schema class and related code.'''
+import keyword
+import textwrap
 from collections import OrderedDict
-from keyword import iskeyword
-from textwrap import dedent
 
 from lima import abc
 from lima import exc
@@ -323,7 +323,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # get correct templates
         if self._ordered:
-            func_tpl = dedent(
+            func_tpl = textwrap.dedent(
                 '''\
                 def _dump_function(schema, obj):
                     return OrderedDict([
@@ -333,7 +333,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             )
             entry_tpl = '("{key}", {get_val})'
         else:
-            func_tpl = dedent(
+            func_tpl = textwrap.dedent(
                 '''\
                 def _dump_function(schema, obj):
                     return {{
@@ -370,7 +370,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 # (if no attr name is specified, use field name as attr name)
                 attr = getattr(field, 'attr', field_name)
 
-                if not str.isidentifier(attr) or iskeyword(attr):
+                if not str.isidentifier(attr) or keyword.iskeyword(attr):
                     msg = 'Not a valid attribute name: {!r}'
                     raise ValueError(msg.format(attr))
 

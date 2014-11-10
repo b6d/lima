@@ -1,4 +1,12 @@
-'''lima: Utilities'''
+'''Internal utilities.
+
+.. warning::
+
+    For users of lima there should be no need to use anything within
+    :mod:`lima.util` directly. Name and contents of this module may change at
+    any time without deprecation notice or upgrade path.
+
+'''
 from collections import abc
 from contextlib import contextmanager
 from sys import exc_info
