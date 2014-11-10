@@ -101,7 +101,7 @@ class SchemaMeta(type):
     - The :attr:`__fields__` of all base classes are copied (with base classes
       specified first having precedence).
 
-      Note that the fields themselves are not copied - changing an inherited
+      Note that the fields themselves are *not* copied - changing an inherited
       field would change this field for all base classes referencing this field
       as well. In general it is *strongly* suggested to treat fields as
       immutable.
@@ -114,16 +114,15 @@ class SchemaMeta(type):
       class namespace and evaluated as follows:
 
       - Fields specified via ``__lima_args__['include']`` (an optional mapping
-        of field names to fields) are added to :attr:`__fields__`, overriding
-        any fields of the same name therein.
-
-        If two fields of the same name are defined, once as a class variable,
-        and once via ``__lima_args__['include']``, a :exc:`ValueError` is
-        raised.
+        of field names to fields) are inserted into :attr:`__fields__`.
+        overriding any fields of the same name therein.
 
         If the order of your fields is important, make sure that
         ``__lima_args__['include']`` is of type
         :class:`collections.OrderedDict` or similar.
+
+        New fields in ``__lima_args__['include']__`` are inserted at the
+        position where ``__lima_args__`` is specified in the class.
 
       - Fields named in an optional sequence ``__lima_args__['exclude']`` are
         removed from :attr:`__fields__`. If only one field is to be removed,
