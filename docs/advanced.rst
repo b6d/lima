@@ -25,7 +25,7 @@ section if you don't want to install SQLAlchemy):
         login = sa.Column(sa.String)
         password_hash = sa.Column(sa.String)
 
-:mod:`lima.fields` defines a mapping :data:`lima.fields.type_mapping` of some
+:mod:`lima.fields` defines a mapping :data:`lima.fields.TYPE_MAPPING` of some
 Python types to field classes. We can utilize this as follows:
 
 .. code-block:: python
@@ -36,7 +36,7 @@ Python types to field classes. We can utilize this as follows:
     def fields_for_model(model):
         result = {}
         for name, col in model.__mapper__.columns.items():
-            field_class = fields.type_mapping[col.type.python_type]
+            field_class = fields.TYPE_MAPPING[col.type.python_type]
             result[name] = field_class()
         return result
 
@@ -60,7 +60,7 @@ like.
 
 .. warning::
 
-    Neither :data:`lima.fields.type_mapping` nor the available field classes
+    Neither :data:`lima.fields.TYPE_MAPPING` nor the available field classes
     are as exhaustive as they should be. Expect above code to fail on slightly
     exotic column types. There is still work to be done.
 
