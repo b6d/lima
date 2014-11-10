@@ -6,6 +6,19 @@ import pytest
 from lima import util
 
 
+def test_suppress():
+    # this shouldn't be necessary, since the code of suppress is taken from the
+    # lima stdlib. nevertheless, why not? so, the next statements should
+    # suppress any Exceptions
+    with util.suppress(ZeroDivisionError):
+        1 / 0
+    with util.suppress(ImportError, ZeroDivisionError):
+        1 / 0
+    with pytest.raises(ZeroDivisionError):
+        with util.suppress(ImportError):
+            1 / 0
+
+
 def test_complain_about():
     '''Test if complain_about prefixes exception messages correctly.'''
     with pytest.raises(RuntimeError) as e:
