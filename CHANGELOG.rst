@@ -2,12 +2,14 @@
 Changelog
 =========
 
-0.3 (unreleased)
+0.3.1 (2014-11-11)
+==================
+
+- Fix inconsistency in changelog.
+
+
+0.3 (2014-11-11)
 ================
-
-.. note::
-
-    While unreleased, the changelog of lima 0.3 is itself subject to change.
 
 - Support dumping of ``OrderedDict`` objects by providing ``ordered=True`` to
   a Schema constructor.
