@@ -289,9 +289,6 @@ the :meth:`dump` method), or for every call of :meth:`dump` (by specifying
     #  {'last_name': 'Zweig'}]
 
 
-
-
-
 Schema Recap
 ============
 
@@ -305,5 +302,7 @@ Schema Recap
   ``__lima_args__['include']`` and inheriting from other schemas).
 
 - You can fine-tune what gets dumped by a schema object (``only`` and
-  ``exclude`` keyword-only arguments) and you can serialize collections of
-  objects (``many=True``).
+  ``exclude`` keyword-only arguments)
+
+- You can dump ordered dictionaries (``ordered=True``) and you can serialize
+  collections of objects (``many=True``).
