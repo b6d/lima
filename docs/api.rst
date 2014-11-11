@@ -35,12 +35,9 @@ lima.fields
 
 .. automodule:: lima.fields
     :members:
-    :exclude-members: TYPE_MAPPING, type_mapping
+    :exclude-members: TYPE_MAPPING
 
     .. autodata:: lima.fields.TYPE_MAPPING
-        :annotation: =dict(...)
-
-    .. autodata:: lima.fields.type_mapping
         :annotation: =dict(...)
 
 

@@ -5,7 +5,7 @@ Changelog
 0.4 (unreleased)
 ================
 
-- No changes yet.
+- Remove ``fields.type_mapping``. Use ``fields.TYPE_MAPPING`` instead.
 
 
 0.3.1 (2014-11-11)

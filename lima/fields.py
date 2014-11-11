@@ -264,9 +264,3 @@ TYPE_MAPPING = {
 
 This can be used to automatically create fields for objects you know the
 attribute's types of.'''
-
-type_mapping = TYPE_MAPPING
-'''An alias for :attr:`TYPE_MAPPING`.
-
-.. deprecated:: 0.3
-    Will be removed in 0.4. Use :attr:`TYPE_MAPPING` instead.'''
