@@ -17,8 +17,8 @@ def _fields_from_bases(bases):
 
     # determine base classes that are actually Schemas by checking if they
     # inherit from abc.SchemaABC
-    schema_bases = [b for b in bases if issubclass(b, abc.SchemaABC) and
-                                        not b == abc.SchemaABC]
+    schema_bases = [b for b in bases if (issubclass(b, abc.SchemaABC) and
+                                         b != abc.SchemaABC)]
 
     # Add fields of base schemas. Bases listed first have precedence (to
     # reflect how python inherits class attributes). Their items are also
@@ -171,7 +171,7 @@ class SchemaMeta(type):
                 # at position of __lima_args__: insert include (if specified)
                 if include:
                     with util.complain_about("__lima_args__['include']"):
-                        fields = _fields_include(fields,  include)
+                        fields = _fields_include(fields, include)
             elif isinstance(v, abc.FieldABC):
                 # if a field was found: move it from namespace into fields
                 # (also, mangle its name to allow some special field names)
