@@ -194,6 +194,67 @@ You *could* also include fields on schema object creation time:
     - why not just include the fields in the Schema itself?
 
 
+Field Order
+===========
+
+Lima marshals objects to dictionaries. Field order doesn't matter. Unless you
+want it to:
+
+.. code-block:: python
+    :emphasize-lines: 1
+
+    person_schema = PersonSchema(ordered=True)
+    person_schema.dump(person)
+    # OrderedDict([
+    #     ('first_name', 'Ernest'),
+    #     ('last_name', 'Hemingway'),
+    #     ('date_of_birth', '1899-07-21')])
+    # ])
+
+Just provide the keyword-only argument ``ordered=True`` to a schema's
+constructor, and the resulting instance will dump ordered dictionaries.
+
+The order of the resulting key-value-pairs reflects the order in which the
+fields were defined at schema definition time.
+
+If you use ``__lima_args__['include']``, make sure to provide an instance of
+:class:`collections.OrderedDict` if you care about the order of those fields as
+well.
+
+Fields specified via ``__lima_args__['include']`` are inserted at the position
+of the :attr:`__lima_args__` class attribute in the Schema class. Here is a
+more complex example:
+
+.. code-block:: python
+
+    from collections import OrderedDict
+
+    class FooSchema(lima.Schema):
+        one = fields.String()
+        two = fields.String()
+
+    class BarSchema(FooSchema):
+        three = fields.String()
+        __lima_args__ = {
+            'include': OrderedDict([
+                ('four', fields.String()),
+                ('five', fields.String())
+            ])
+        }
+        six = fields.String()
+
+    bar_schema = BarSchema(ordered=True)
+
+``bar_schema`` will dump ordered dictionaries with keys ordered from ``one`` to
+``six``.
+
+.. note::
+
+    For the exact rules on how a complex schema's fields are going to be
+    ordered, see :class:`lima.schema.SchemaMeta` or have a look at the source
+    code.
+
+
 Marshalling Collections
 =======================
 
@@ -226,6 +287,9 @@ the :meth:`dump` method), or for every call of :meth:`dump` (by specifying
     # [{'last_name': 'Hemingway'},
     #  {'last_name': 'Woolf'},
     #  {'last_name': 'Zweig'}]
+
+
+
 
 
 Schema Recap
