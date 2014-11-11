@@ -30,7 +30,7 @@ But there's more to schemas than this. First of all -- schemas are composible:
         pass
 
     list(UserSchema.__fields__)
-    # ['password_hash', 'login', 'last_name', 'first_name']
+    # ['first_name', 'last_name', 'login', 'password_hash']
 
 Secondly, it's possible to *remove* fields from subclasses that are present in
 superclasses. This is done by setting a special class attribute
@@ -43,7 +43,7 @@ superclasses. This is done by setting a special class attribute
         __lima_args__ = {'exclude': ['last_name', 'password_hash']}
 
     list(UserProfileSchema.__fields__)
-    # ['login', 'first_name']
+    # ['first_name', 'login']
 
 If there's only one field to exclude, you don't have to put its name inside a
 list - lima does that for you:
@@ -55,7 +55,7 @@ list - lima does that for you:
         __lima_args__ = {'exclude': 'last_name'}  # string instead of list
 
     list(NoLastNameSchema.__fields__)
-    # ['password_hash', 'login', 'first_name']
+    # ['first_name', 'login', 'password_hash']
 
 If, on the other hand, there are lots of fields to exclude, you *could* provide
 ``__lima_args__['only']`` (Note that ``"exclude"`` and ``"only"`` are mutually
@@ -229,7 +229,7 @@ more complex example:
 
     from collections import OrderedDict
 
-    class FooSchema(lima.Schema):
+    class FooSchema(Schema):
         one = fields.String()
         two = fields.String()
 

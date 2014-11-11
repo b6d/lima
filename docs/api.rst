@@ -63,8 +63,7 @@ lima.schema
 ===========
 
 .. automodule:: lima.schema
-   :members:
-   :exclude-method: SchemaMeta.__prepare__
+    :members:
 
 
 .. _api_util:

@@ -50,7 +50,7 @@ Defining lima schemas becomes a piece of cake now:
     class AccountSchema(Schema):
         __lima_args__ = {'include': fields_for_model(Account)}
 
-    AccountSchema.__fields__
+    dict(AccountSchema.__fields__)
     # {'id': <lima.fields.Integer at 0x...>,
     #  'login': <lima.fields.String at 0x...>,
     #  'password_hash': <lima.fields.String at 0x...>}
@@ -77,7 +77,8 @@ some common non-Python-identifier field names (like JSON-LD's ``"@id"``) as
 class attributes.
 
 The following table shows how name prefixes will be replaced by lima when
-specifying fields as class attributes:
+specifying fields as class attributes (note that every one of those prefixes
+ends with a double underscore):
 
 ============ =========================
 name prefix  replacement
