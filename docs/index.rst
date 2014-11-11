@@ -16,35 +16,6 @@ sorts of other things. lima is Free Software, lightweight and fast.
           Work, 1914)
 
 
-Key Features
-============
-
-Lightweight
-    lima has only a few hundred SLOC. lima has no external dependencies.
-
-Fast
-    lima tries to be as fast as possible while still remaining pure Python 3.
-
-Focused
-    lima doesn't try to do an ORM's job and it doesn't try to do a JSON
-    library's job.
-
-Extensible
-    Build complex schemas out of simpler ones. Extend existing fields types or
-    define your own.
-
-Easy to learn
-    lima is not only fast but also fast (and easy) to learn.
-
-Well documented
-    lima has a comprehensive :doc:`tutorial <first_steps>` and more than one
-    line of docstring per line of Python code.
-
-Free
-    lima is Free Software, :doc:`licensed <license>` under the terms of the MIT
-    license.
-
-
 lima at a Glance
 ================
 
@@ -68,6 +39,24 @@ lima at a Glance
     schema = BookSchema()
     schema.dump(book)
     # {'published': '1952-09-01', 'title': 'The Old Man and the Sea'}
+
+
+Key Features
+============
+
+Lightweight
+    lima has only a few hundred SLOC. lima has no external dependencies.
+
+Fast
+    lima tries to be as fast as possible while still remaining pure Python 3.
+
+Well documented
+    lima has a comprehensive :doc:`tutorial <first_steps>` and more than one
+    line of :doc:`docstring <api>` per line of Python code.
+
+Free
+    lima is Free Software, licensed under the terms of the :doc:`MIT license
+    <license>`.
 
 
 Documentation
