@@ -78,9 +78,10 @@ Documentation
 
    installation
    first_steps
-   fields
    schemas
+   fields
    nested_data
+   advanced
    api
    project_info
    changelog

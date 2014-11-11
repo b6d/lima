@@ -27,7 +27,11 @@ Changelog
   options *include*, *exclude*, *only*) consistent with specifying fields on
   schema instantiation (schema constructor args *include*, *exclude*, *only*).
 
-- Several small improvements and bug fixes.
+- Deprecate ``fields.type_mapping`` in favour of ``fields.TYPE_MAPPING``.
+
+- Improvements to the documentation.
+
+- Overall cleanup, improvements and bug fixes.
 
 
 0.2.2 (2014-10-27)

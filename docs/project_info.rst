@@ -29,15 +29,15 @@ concepts from.
     marshmallow's. lima is not a drop-in replacement for marshmallow and it
     does not intend to become one.
 
-Other than that, the author believes to have benefited a lot from looking at
-the documentation and source code of other awesome projects, among them (in
-alphabetical order):
+The lima sources include a copy of the  `Read the Docs Sphinx Theme
+<https://github.com/snide/sphinx_rtd_theme>`_.
 
-- `django <https://www.djangoproject.com>`_
-- `morepath <https://morepath.readthedocs.org>`_
-- `SQLAlchemy <http://www.sqlalchemy.org>`_
-
-as well as the Python standard library itself. (Seriously, look in there!)
+The author believes to have benefited a lot from looking at the documentation
+and source code of other awesome projects, among them
+`django <https://www.djangoproject.com>`_,
+`morepath <https://morepath.readthedocs.org>`_ and
+`SQLAlchemy <http://www.sqlalchemy.org>`_ as well as the Python standard
+library itself. (Seriously, look in there!)
 
 
 About the Image

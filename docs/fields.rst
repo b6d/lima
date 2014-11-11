@@ -8,7 +8,7 @@ follow only the most basic protocol, they are rather powerful.
 
 .. _field_data_sources:
 
-How a Filed gets its Data
+How a Field gets its Data
 =========================
 
 The :class:`PersonSchema` from the last chapter contains three field objects
@@ -133,13 +133,7 @@ parameter to a field's constructor:
 On Field Parameters
 -------------------
 
-``attr``, ``get`` and ``val`` (among many others) are *keyword-only arguments*
-- a relatively uncommon feature of Python 3 that the lima API makes heavy use
-of.
-
-.. include:: keyword_only_args.rst.inc
-
-``attr``, ``get`` and ``val`` are also mutually exclusive. See
+``attr``, ``get`` and ``val`` are mutually exclusive. See
 :class:`lima.fields.Field` for more information on this topic.
 
 
