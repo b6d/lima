@@ -9,13 +9,13 @@ Changelog
 
     While unreleased, the changelog of lima 0.3 is itself subject to change.
 
+- Support dumping of ``OrderedDict`` objects by providing ``ordered=True`` to
+  a Schema constructor.
+
 - Implement field name mangling: ``at__foo`` becomes ``@foo`` for fields
   specified as class attributes.
 
 - Support constant field values by providing ``val`` to a Field constructor.
-
-- Support dumping of ``OrderedDict`` objects by providing ``ordered=True`` to
-  a Schema constructor
 
 - Add new ways to specify a schema's fields:
 
@@ -29,7 +29,7 @@ Changelog
 
 - Deprecate ``fields.type_mapping`` in favour of ``fields.TYPE_MAPPING``.
 
-- Improvements to the documentation.
+- Improve the documentation.
 
 - Overall cleanup, improvements and bug fixes.
 
