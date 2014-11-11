@@ -1,11 +1,10 @@
-'''Module for the Registry class.
+'''Internal class registry.
 
-.. note::
-    A global :class:`lima.registry.Registry` object is used internally to allow
-    instances of :class:`lima.fields.Nested` to reference by name
-    :class:`lima.schema.Schema` classes that have not been defined at the time
-    of referencing. For users of the library there should be no need to use
-    anything within :mod:`lima.registry` directly.
+.. warning::
+
+    For users of lima there should be no need to use anything within
+    :mod:`lima.registry` directly. Name and contents of this module may change
+    at any time without deprecation notice or upgrade path.
 
 '''
 from collections import defaultdict
@@ -98,6 +97,7 @@ class Registry:
 global_registry = Registry()
 '''A global :class:`Registry` instance.
 
-Used by lima to automatically keep track
-of created Schemas (this is needed by :class:`lima.fields.Nested`).
+Used internally by lima to automatically keep track of created Schemas (this is
+needed by :class:`lima.fields.Nested`).
+
 '''

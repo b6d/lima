@@ -6,13 +6,22 @@ Fields are the basic building blocks of a Schema. Even though lima fields
 follow only the most basic protocol, they are rather powerful.
 
 
-What Data a Field presents
-==========================
+.. _field_data_sources:
 
-The :class:`PersonSchema` from the last chapter contains three field  objects
-named *first_name,* *last_name* and *date_of_birth.* These correspond to a
-person object's attributes of the same name. What if our model didn't have an
-attribute :attr:`date_of_birth` but an attribute :attr:`birthday` instead?
+How a Field gets its Data
+=========================
+
+The :class:`PersonSchema` from the last chapter contains three field objects
+named *first_name,* *last_name* and *date_of_birth.* These get their data from
+a person object's attributes of the same name. But what if those attributes
+were named differently?
+
+
+Data from arbitrary Object Attributes
+-------------------------------------
+
+Let's say our model doesn't have an attribute :attr:`date_of_birth` but an
+attribute :attr:`birthday` instead.
 
 To get the data for our ``date_of_birth`` field from the model's
 :attr:`birthday` attribute, we have to tell the field by supplying the
@@ -43,10 +52,13 @@ attribute name via the ``attr`` argument:
     #  'first_name': 'Ernest',
     #  'last_name': 'Hemingway'}
 
+
+Data derived by differnt Means
+------------------------------
+
 Providing ``attr`` is the preferred way to deal with attribute names differing
-from field names, but ``attr`` is not enough for some other cases. What if we
-can't get the information we need from a single attribute? Here *getters* come
-in handy.
+from field names, but ``attr`` is not always enough. What if we can't get the
+information we need from a single attribute? Here *getters* come in handy.
 
 A getter in this context is a callable that takes an object (in our case: a
 person object) and returns the value we're interested in. We tell a field about
@@ -83,10 +95,46 @@ the getter via the ``get`` parameter:
             get=lambda obj: '{}, {}'.format(obj.last_name, obj.first_name)
         )
 
-``attr`` and ``get`` are *keyword-only arguments* - a relatively uncommon
-feature of Python 3 that the lima API makes heavy use of.
 
-.. include:: keyword_only_args.rst.inc
+Constant Field Values
+---------------------
+
+Sometimes a field's data is always the same. For example, if a schema provides
+a field for type information, this field will most likely always have the same
+value.
+
+To reflect this, we could provide a getter that always returns the same value
+(here, for example, the string ``'https:/schema.org/Person'``). But lima
+provides a better way to achieve the same result: Just provide the ``val``
+parameter to a field's constructor:
+
+.. code-block:: python
+    :emphasize-lines: 2, 9
+
+    class TypedPersonSchema(Schema):
+        _type = fields.String(val='https://schema.org/Person')
+        givenName = fields.String(attr='first_name')
+        familyName = fields.String(attr='last_name')
+        birthDate = fields.Date(attr='birthday')
+
+    schema = TypedPersonSchema()
+    schema.dump(person)
+    # {'_type': 'https://schema.org/Person',
+    #  'birthDate': '1899-07-21',
+    #  'familyName': 'Hemingway',
+    #  'givenName': 'Ernest'}
+
+.. note::
+
+    It's not possible to provide ``None`` as a constant value using ``val`` -
+    use a getter if you need to do this.
+
+
+On Field Parameters
+-------------------
+
+``attr``, ``get`` and ``val`` are mutually exclusive. See
+:class:`lima.fields.Field` for more information on this topic.
 
 
 How a Field presents its Data
@@ -164,6 +212,8 @@ Or we can change how already supported data types are marshalled:
     :class:`lima.fields.Nested` implements :meth:`pack` as an instance method.
 
 
+.. _data_validation:
+
 Data Validation
 ===============
 
@@ -191,10 +241,6 @@ But this doesn't mean it can't be done. You'll just have to do it yourself. The
 
 .. note::
 
-    If - depending on demand and developer time - lima ever gets
-    deserialization support, sensible validation of incoming data would be a
-    key component of this feature.
-
     If you need full-featured validation of your existing data at marshalling
     time, have a look at `marshmallow <http://marshmallow.readthedocs.org>`_.
 
@@ -202,8 +248,8 @@ But this doesn't mean it can't be done. You'll just have to do it yourself. The
 Fields Recap
 ============
 
-- You now know how a field gets its data (in order of precedence: getter >
-  ``attr`` parameter > field name).
+- You now know how it's determined where a field's data comes from. (from least
+  to highest precedence: field name < attr < getter < constant field value.
 
 - You know how a field presents its data (:meth:`pack` method).
 

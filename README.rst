@@ -2,38 +2,11 @@
 lima: Lightweight Marshalling of Python 3 Objects
 =================================================
 
+|pypi| |docs| |build| |coverage|
+
 **lima** takes arbitrary Python objects and converts them into data structures
 native to Python. The result can easily be serialized into JSON, XML, and all
 sorts of other things. lima is Free Software, lightweight and fast.
-
-
-Key Features
-============
-
-Lightweight
-    lima has only a few hundred SLOC. lima has no external dependencies.
-
-Fast
-    lima tries to be as fast as possible while still remaining pure Python 3.
-
-Focused
-    lima doesn't try to do an ORM's job and it doesn't try to do a JSON
-    library's job.
-
-Extensible
-    Build complex schemas out of simpler ones. Extend existing fields types or
-    define your own.
-
-Easy to learn
-    lima is not only fast but also fast (and easy) to learn.
-
-Well documented
-    lima has a comprehensive tutorial and more than one line of docstring per
-    line of Python code
-
-Free
-    lima is Free Software, licensed under the terms of the MIT license (see the
-    LICENSE file for details).
 
 
 lima at a Glance
@@ -61,6 +34,23 @@ lima at a Glance
     # {'published': '1952-09-01', 'title': 'The Old Man and the Sea'}
 
 
+Key Features
+============
+
+Lightweight
+    lima has only a few hundred SLOC. lima has no external dependencies.
+
+Fast
+    lima tries to be as fast as possible while still remaining pure Python 3.
+
+Well documented
+    lima has a comprehensive tutorial and more than one line of docstring per
+    line of Python code (see `documentation`_).
+
+Free
+    lima is Free Software, licensed under the terms of the MIT license.
+
+
 Requirements
 ============
 
@@ -74,4 +64,27 @@ Installation
 
   $ pip install lima
 
-See the documentation for more comprehensive install instructions.
+See the `documentation`_  for more comprehensive install instructions.
+
+
+.. |pypi| image:: https://img.shields.io/pypi/v/lima.svg
+    ?style=flat-square
+    :target: https://pypi.python.org/pypi/lima
+    :alt: PyPi Package
+
+.. |docs| image:: https://readthedocs.org/projects/lima/badge/
+    ?version=latest&style=flat-square
+    :target: https://lima.readthedocs.org
+    :alt: Documentation Status
+
+.. |build| image:: https://img.shields.io/travis/b6d/lima/master.svg
+    ?style=flat-square
+    :target: https://travis-ci.org/b6d/lima
+    :alt: Build Status
+
+.. |coverage| image:: https://img.shields.io/coveralls/b6d/lima/master.svg
+    ?style=flat-square
+    :target: https://coveralls.io/r/b6d/lima
+    :alt: Test Coverage
+
+.. _documentation: https://lima.readthedocs.org/en/latest/

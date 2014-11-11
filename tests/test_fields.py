@@ -37,12 +37,21 @@ def test_simple_fields_attr(cls):
 
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
-def test_simple_fields(cls):
+def test_simple_fields_getter(cls):
     '''Test creation of simple fields with get.'''
     getter = lambda obj: obj.foo
     field = cls(get=getter)
     assert isinstance(field, abc.FieldABC)
     assert field.get == getter
+
+
+@pytest.mark.parametrize('cls', SIMPLE_FIELDS)
+def test_simple_fields_val(cls):
+    '''Test creation of simple fields with val.'''
+    val = object()  # some arbitrary value
+    field = cls(val=val)
+    assert isinstance(field, abc.FieldABC)
+    assert field.val is val
 
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
@@ -61,9 +70,13 @@ def test_illegal_getter_fails(cls):
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
 def test_attr_and_getter_fails(cls):
-    '''Test if supplying both getter and attr raises an error.'''
+    '''Test error on supplying more than one of get, val and attr.'''
     with pytest.raises(ValueError):
         field = cls(attr='foo', get=lambda obj: 'bar')
+    with pytest.raises(ValueError):
+        field = cls(attr='foo', val='bar')
+    with pytest.raises(ValueError):
+        field = cls(attr='foo', get=lambda obj: 'bar', val='baz')
 
 
 @pytest.mark.parametrize('cls', PASSTHROUGH_FIELDS)

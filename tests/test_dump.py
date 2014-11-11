@@ -1,5 +1,6 @@
 '''tests for schema.Schema.dump module'''
 
+from collections import OrderedDict
 from datetime import date, datetime
 
 import pytest
@@ -30,6 +31,10 @@ class GetterSchema(schema.Schema):
     some_getter = lambda obj: '{} {}'.format(obj.title, obj.name)
 
     full_name = fields.String(get=some_getter)
+
+
+class ConstantValueSchema(schema.Schema):
+    constant = fields.Date(val=date(2014, 10, 20))
 
 
 class KnightSchema(schema.Schema):
@@ -121,6 +126,14 @@ def test_getter_field_dump(king):
     assert getter_schema.dump(king) == expected
 
 
+def test_constant_value_field_dump(king):
+    constant_value_schema = ConstantValueSchema()
+    expected = {
+        'constant': '2014-10-20'
+    }
+    assert constant_value_schema.dump(king) == expected
+
+
 def test_many_dump1(knights):
     multi_person_schema = PersonSchema(only=['name'], many=True)
     expected = [
@@ -184,3 +197,30 @@ def test_dump_nested_schema_self(king):
         'boss': {'name': 'Arthur'},
     }
     assert king_schema.dump(king) == expected
+
+
+def test_ordered(king):
+    '''Test dumping to OrderedDicts'''
+    person_schema_unordered = PersonSchema(ordered=False)
+    expected_unordered = {
+        'title': 'King',
+        'name': 'Arthur',
+        'number': 1,
+        'born': '0501-01-01',
+    }
+    person_schema_ordered = PersonSchema(ordered=True)
+    expected_ordered = OrderedDict(
+        [
+            ('title', 'King'),
+            ('name', 'Arthur'),
+            ('number', 1),
+            ('born', '0501-01-01'),
+        ]
+    )
+    result_unordered = person_schema_unordered.dump(king)
+    result_ordered = person_schema_ordered.dump(king)
+
+    assert result_unordered.__class__ == dict
+    assert result_ordered.__class__ == OrderedDict
+    assert result_unordered == expected_unordered
+    assert result_ordered == expected_ordered

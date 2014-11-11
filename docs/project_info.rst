@@ -12,15 +12,32 @@ lima is heavily inspired by `marshmallow
 <http://marshmallow.readthedocs.org>`_, from which it lifts most of its
 concepts from.
 
-Other than that, the author believes to have benefited a lot from looking at
-the documentation and source code of other awesome projects, among them (in
-alphabetical order):
+.. note::
 
-- `django <https://www.djangoproject.com>`_
-- `morepath <https://morepath.readthedocs.org>`_
-- `SQLAlchemy <http://www.sqlalchemy.org>`_
+    The key differences between lima and marshmallow are (from my, Bernhard's
+    point of view):
 
-as well as the Python standard library itself. (Seriously, look in there!)
+    - marshmallow supports Python 2 as well, lima is Python 3 only.
+
+    - marshmallow has more features, foremost among them deserialization and
+      validation.
+
+    - :ref:`Skipping validation <data_validation>` and doing internal stuff
+      differently, lima is (at the time of writing this) noticeably faster.
+
+    Although greatly inspired by marshmallow's API, the lima API differs from
+    marshmallow's. lima is not a drop-in replacement for marshmallow and it
+    does not intend to become one.
+
+The lima sources include a copy of the  `Read the Docs Sphinx Theme
+<https://github.com/snide/sphinx_rtd_theme>`_.
+
+The author believes to have benefited a lot from looking at the documentation
+and source code of other awesome projects, among them
+`django <https://www.djangoproject.com>`_,
+`morepath <https://morepath.readthedocs.org>`_ and
+`SQLAlchemy <http://www.sqlalchemy.org>`_ as well as the Python standard
+library itself. (Seriously, look in there!)
 
 
 About the Image
