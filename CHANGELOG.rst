@@ -5,6 +5,10 @@ Changelog
 0.4 (unreleased)
 ================
 
+.. note::
+
+    While unreleased, the changelog of lima 0.4 is itself subject to change.
+
 - Remove ``fields.type_mapping``. Use ``fields.TYPE_MAPPING`` instead.
 
 
