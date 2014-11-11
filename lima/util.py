@@ -9,7 +9,6 @@
 '''
 from collections import abc
 from contextlib import contextmanager
-from sys import exc_info
 
 
 @contextmanager
