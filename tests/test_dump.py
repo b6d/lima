@@ -41,26 +41,26 @@ class KnightSchema(schema.Schema):
     name = fields.String()
 
 
-class KingSchemaNestedStr(KnightSchema):
+class KingSchemaEmbedStr(KnightSchema):
     title = fields.String()
-    subjects = fields.Nested(schema=__name__ + '.KnightSchema', many=True)
+    subjects = fields.Embed(schema=__name__ + '.KnightSchema', many=True)
 
 
-class KingSchemaNestedClass(KnightSchema):
+class KingSchemaEmbedClass(KnightSchema):
     title = fields.String()
-    subjects = fields.Nested(schema=KnightSchema, many=True)
+    subjects = fields.Embed(schema=KnightSchema, many=True)
 
 
-class KingSchemaNestedObject(KnightSchema):
+class KingSchemaEmbedObject(KnightSchema):
     some_schema_object = KnightSchema(many=True)
 
     title = fields.String()
-    subjects = fields.Nested(schema=some_schema_object)
+    subjects = fields.Embed(schema=some_schema_object)
 
 
 class SelfReferentialKingSchema(schema.Schema):
     name = fields.String()
-    boss = fields.Nested(schema=__name__ + '.SelfReferentialKingSchema',
+    boss = fields.Embed(schema=__name__ + '.SelfReferentialKingSchema',
                          exclude='boss')
 
 
@@ -155,11 +155,11 @@ def test_many_dump2(knights):
 
 
 @pytest.mark.parametrize('schema_cls',
-                         [KingSchemaNestedStr,
-                          KingSchemaNestedClass,
-                          KingSchemaNestedObject])
-def test_dump_nested_schema(schema_cls, king, knights):
-    '''Test with nested Schema specified as a String'''
+                         [KingSchemaEmbedStr,
+                          KingSchemaEmbedClass,
+                          KingSchemaEmbedObject])
+def test_dump_embed_schema(schema_cls, king, knights):
+    '''Test with embed Schema specified as a String'''
     king_schema = schema_cls()
     king.subjects = knights
     expected = {
@@ -174,22 +174,22 @@ def test_dump_nested_schema(schema_cls, king, knights):
     assert king_schema.dump(king) == expected
 
 
-def test_dump_nested_schema_instance_double_kwargs_error(king, knights):
+def test_dump_embed_schema_instance_double_kwargs_error(king, knights):
     '''Test for ValueError when providing unnecssary kwargs.'''
 
     class KnightSchema(schema.Schema):
         name = fields.String()
 
-    nested_schema = KnightSchema(many=True)
+    embed_schema = KnightSchema(many=True)
 
     with pytest.raises(ValueError):
         class KingSchema(KnightSchema):
             title = fields.String()
-            subjects = fields.Nested(schema=nested_schema, many=True)
+            subjects = fields.Embed(schema=embed_schema, many=True)
 
 
-def test_dump_nested_schema_self(king):
-    '''Test with nested Schema specified as a String'''
+def test_dump_embed_schema_self(king):
+    '''Test with embedded Schema specified as a String'''
     king_schema = SelfReferentialKingSchema()
     king.boss = king
     expected = {

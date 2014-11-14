@@ -106,14 +106,14 @@ def test_datetime_pack():
     assert fields.DateTime.pack(datetime) == expected
 
 
-# tests of nested fields assume a lot of the other stuff also works
+# tests of embedded fields assume a lot of the other stuff also works
 
-def test_nested_by_name():
-    field = fields.Nested(schema='NonExistentSchema')
+def test_embed_by_name():
+    field = fields.Embed(schema='NonExistentSchema')
     assert field.schema_name == 'NonExistentSchema'
 
 
-def test_nested_error_on_illegal_schema_spec():
+def test_embed_error_on_illegal_schema_spec():
 
     with pytest.raises(TypeError):
-        field = fields.Nested(schema=123)
+        field = fields.Embed(schema=123)
