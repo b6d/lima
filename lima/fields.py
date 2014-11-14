@@ -17,8 +17,15 @@ class Field(abc.FieldABC):
 
         val: An optional constant value for the field.
 
+        is_oid: If ``True``, marks this field as a field whose value can be
+            used to identify an object. A schema must not end up with more than
+            one identifier field.
+
     .. versionadded:: 0.3
         The ``val`` parameter.
+
+    .. versionadded:: 0.4
+        The ``is_oid`` parameter.
 
     :attr:`attr`, :attr:`get` and :attr:`val` are mutually exclusive.
 
@@ -36,7 +43,7 @@ class Field(abc.FieldABC):
     instance.
 
     '''
-    def __init__(self, *, attr=None, get=None, val=None):
+    def __init__(self, *, attr=None, get=None, val=None, is_oid=False):
         if sum(v is not None for v in (attr, get, val)) > 1:
             raise ValueError('attr, get and val are mutually exclusive.')
 
@@ -51,6 +58,8 @@ class Field(abc.FieldABC):
             self.get = get
         elif val is not None:
             self.val = val
+
+        self.is_oid = is_oid
 
 
 class Boolean(Field):
