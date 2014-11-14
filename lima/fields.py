@@ -148,15 +148,15 @@ class DateTime(Field):
         return val.isoformat() if val is not None else None
 
 
-class Nested(Field):
-    '''A Field referencing another object with it's respective schema.
+class Embed(Field):
+    '''A Field to embed linked object(s).
 
     Args:
         schema: The schema of the referenced object. This can be specified via
             a schema *object,* a schema *class* (that will get instantiated
             immediately) or the qualified *name* of a schema class (for when
             the named schema has not been defined at the time of the
-            :class:`Nested` object's creation). If two or more schema classes
+            :class:`Embed` object's creation). If two or more schema classes
             with the same name exist in different modules, the schema class
             name has to be fully module-qualified (see the :ref:`entry on class
             names <on_class_names>` for clarification of these concepts).
@@ -174,40 +174,39 @@ class Nested(Field):
             constructor when the time has come to instance it. Must be empty if
             ``schema`` is a :class:`lima.schema.Schema` object.
 
-    .. versionadded:: 0.3
-        The ``val`` parameter.
-
     Raises:
         ValueError: If ``kwargs`` are specified even if ``schema`` is a
             :class:`lima.schema.Schema` *object.*
 
+        TypeError: If ``schema`` has the wrong type.
+
     Examples: ::
 
         # refer to PersonSchema class
-        author = Nested(schema=PersonSchema)
+        author = Embed(schema=PersonSchema)
 
         # refer to PersonSchema class with additional params
-        artists = Nested(schema=PersonSchema, exclude='email', many=True)
+        artists = Embed(schema=PersonSchema, exclude='email', many=True)
 
         # refer to PersonSchema object
-        author = Nested(schema=PersonSchema())
+        author = Embed(schema=PersonSchema())
 
         # refer to PersonSchema object with additional params
-        # (note that Nested() gets no kwargs)
-        artists = Nested(schema=PersonSchema(exclude='email', many=true))
+        # (note that Embed() itself gets no kwargs)
+        artists = Embed(schema=PersonSchema(exclude='email', many=true))
 
         # refer to PersonSchema per name
-        author = Nested(schema='PersonSchema')
+        author = Embed(schema='PersonSchema')
 
         # refer to PersonSchema per name with additional params
-        author = Nested(schema='PersonSchema', exclude='email', many=True)
+        author = Embed(schema='PersonSchema', exclude='email', many=True)
 
         # refer to PersonSchema per module-qualified name
         # (in case of ambiguity)
-        author = Nested(schema='project.persons.PersonSchema')
+        author = Embed(schema='project.persons.PersonSchema')
 
         # specify attr name as well
-        user = Nested(attr='login_user', schema=PersonSchema)
+        user = Embed(attr='login_user', schema=PersonSchema)
 
     '''
     def __init__(self, *, schema, attr=None, get=None, val=None, **kwargs):
@@ -259,6 +258,15 @@ class Nested(Field):
             self.schema_inst = cls(**self.schema_kwargs)
 
         return self.schema_inst.dump(val) if val is not None else None
+
+
+Nested = Embed
+'''A Field to embed linked object(s)
+
+:class:`Nested` is the old name of class :class:`Embed`.
+
+.. deprecated:: 0.4
+    Will be removed in 0.5. Use :class:`Embed` instead'''
 
 
 TYPE_MAPPING = {
