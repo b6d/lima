@@ -313,6 +313,63 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         # this defines _dump_function in self's namespace
         exec(code, globals(), self.__dict__)
 
+    @staticmethod
+    def _field_value_code_attrs(field, field_name, field_num):
+        '''Get code/attrs to determine a field's serialized value.
+
+        Args:
+            field: A :class:`lima.fields.Field` instance.
+
+            field_name: The name (key) of the field instance.
+
+            field_num: A schema-wide unique number for the field.
+
+        Returns: A tuple consisting of: a) a fragment of Python code to
+            determine the field value *for the specific case of a schema
+            instance called ``"schema"`` serializing an object called
+            ``"obj"``* and b) a mapping of attribute names to attribute values
+            that the schema instance *must have* for this code to work.
+
+        '''
+        attrs = {}
+        if hasattr(field, 'val'):
+            # add constant-field-value-shortcut to attrs
+            val_name = '__val_{}'.format(field_num)
+            attrs[val_name] = field.val
+
+            # later, get value using this shortcut
+            val_code = 'schema.{}'.format(val_name)
+
+        elif hasattr(field, 'get'):
+            # add value-getter-shortcut to attrs
+            getter_name = '__get_{}'.format(field_num)
+            attrs[getter_name] = field.get
+
+            # later, get value by calling this shortcut
+            val_code = 'schema.{}(obj)'.format(getter_name)
+
+        else:
+            # neither constant val nor getter: try to get value via attr
+            # (if attr is not specified, use field name as attr)
+            obj_attr = getattr(field, 'attr', field_name)
+
+            if not str.isidentifier(obj_attr) or keyword.iskeyword(obj_attr):
+                msg = 'Not a valid attribute name: {!r}'
+                raise ValueError(msg.format(obj_attr))
+
+            # later, get value using obj_attr
+            val_code = 'obj.{}'.format(obj_attr)
+
+        if hasattr(field, 'pack'):
+            # add pack-shortcut to attributes
+            packer_name = '__pack_{}'.format(field_num)
+            attrs[packer_name] = field.pack
+
+            # later, pass result field value to this shortcut
+            val_code = 'schema.{}({})'.format(packer_name, val_code)
+
+        return val_code, attrs
+
     def _get_dump_function_code(self):
         '''Get code for a customized dump function.'''
         # note that even _though dump_function might *look* like a method at
@@ -348,42 +405,10 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # iterate over fields to fill up entries
         for field_num, (field_name, field) in enumerate(self._fields.items()):
-
-            if hasattr(field, 'val'):
-                # add constant-field-value-shortcut to self
-                val_name = '__val_{}'.format(field_num)
-                setattr(self, val_name, field.val)
-
-                # later, get value using this shortcut
-                get_val = 'schema.{}'.format(val_name)
-
-            elif hasattr(field, 'get'):
-                # add getter-shortcut to self
-                getter_name = '__get_{}'.format(field_num)
-                setattr(self, getter_name, field.get)
-
-                # later, get value by calling getter-shortcut
-                get_val = 'schema.{}(obj)'.format(getter_name)
-
-            else:
-                # neither constant val nor getter: try to get value via attr
-                # (if no attr name is specified, use field name as attr name)
-                attr = getattr(field, 'attr', field_name)
-
-                if not str.isidentifier(attr) or keyword.iskeyword(attr):
-                    msg = 'Not a valid attribute name: {!r}'
-                    raise ValueError(msg.format(attr))
-
-                # later, get value using attr
-                get_val = 'obj.{}'.format(attr)
-
-            if hasattr(field, 'pack'):
-                # add pack-shortcut to self
-                packer_name = '__pack_{}'.format(field_num)
-                setattr(self, packer_name, field.pack)
-
-                # later, wrap pass result of get_val to pack-shortcut
-                get_val = 'schema.{}({})'.format(packer_name, get_val)
+            val_code, attrs = Schema._field_value_code_attrs(field, field_name,
+                                                             field_num)
+            for attr_name, attr in attrs.items():
+                setattr(self, attr_name, attr)
 
             # try to guard against code injection via quotes in key
             key = str(field_name)
@@ -392,7 +417,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 raise ValueError(msg.format(key))
 
             # add entry
-            entries.append(entry_tpl.format(key=key, get_val=get_val))
+            entries.append(entry_tpl.format(key=key, get_val=val_code))
 
         sep = ',\n        '
         code = func_tpl.format(contents=sep.join(entries))
