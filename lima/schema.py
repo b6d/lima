@@ -307,32 +307,31 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self._ordered = ordered
         self.many = many
 
-        # get code/namespace for the customized dump function
+        # get code and namespace for the customized dump function
         code, namespace = self._dump_function_code_ns(fields, ordered)
 
         # namespace for dump function: provide OrderedDict and nothing else
         namespace['OrderedDict'] = OrderedDict
         namespace['__builtins__'] = {}
 
-        # define _dump_function inside namespace, then set _dump_function attr
+        # define dump function inside namespace, then set _dump_function attr
         exec(code, namespace)
         self._dump_function = namespace['_dump_function']
 
     @staticmethod
     def _field_value_code_ns(field, field_name, field_num):
-        '''Get code/namespace-dict to determine a field's serialized value.
+        '''Get code and namespace dict to determine a field's serialized value.
 
         Args:
             field: A :class:`lima.fields.Field` instance.
 
-            field_name: The name (key) of the field instance.
+            field_name: The name (key) of the field.
 
             field_num: A schema-wide unique number for the field.
 
         Returns: A tuple consisting of: a) a fragment of Python code to
-            determine the field's value and b) a namespace-dict containing
-            shortcuts to necessary values/functions for this code fragment to
-            work.
+            determine the field's value and b) a namespace dict containing
+            objects necessary for this code fragment to work.
 
         '''
         namespace = {}
@@ -376,7 +375,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
     @staticmethod
     def _dump_function_code_ns(fields, ordered):
-        '''Get code/namespace-dict for a customized dump function
+        '''Get code and namespace dict for a customized dump function
 
         Args:
             fields: An ordered mapping of field names to fields
@@ -384,14 +383,14 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             ordered: If True, make the resulting function return OrderedDict
                 objects, else make it return ordinary dict objects
 
-        Returns: A tuple consisting of: a) a fragment of Python code to
-            define a dump function for a schema instance and b) a
-            namespace-dict containing shortcuts to necessary values/functions
-            for this code fragment to work.
+        Returns: A tuple consisting of: a) Python code to define a dump
+            function for a schema instance and b) a namespace dict containing
+            objects necessary for this code to work.
 
         '''
         namespace = {}
-        # get correct templates
+
+        # Get correct templates depending on "ordered"
         if ordered:
             func_tpl = textwrap.dedent(
                 '''\
