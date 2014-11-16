@@ -676,11 +676,10 @@ class TestSchemaInstantiation:
         )
         expected = dedent(
             '''\
-            def _dump_function(obj):
-                return {
-                    "foo": obj.foo_attr,
-                    "bar": obj.bar
-                }
+            def _dump_function(obj, many):
+                if many:
+                    return [{"foo": obj.foo_attr, "bar": obj.bar} for obj in obj]
+                return {"foo": obj.foo_attr, "bar": obj.bar}
             '''
         )
         assert code == expected
@@ -690,11 +689,10 @@ class TestSchemaInstantiation:
         )
         expected = dedent(
             '''\
-            def _dump_function(obj):
-                return OrderedDict([
-                    ("foo", obj.foo_attr),
-                    ("bar", obj.bar)
-                ])
+            def _dump_function(obj, many):
+                if many:
+                    return [OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)]) for obj in obj]
+                return OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)])
             '''
         )
         assert code == expected

@@ -397,20 +397,20 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if ordered:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(obj):
-                    return OrderedDict([
-                        {contents}
-                    ])
+                def _dump_function(obj, many):
+                    if many:
+                        return [OrderedDict([{contents}]) for obj in obj]
+                    return OrderedDict([{contents}])
                 '''
             )
             entry_tpl = '("{key}", {get_val})'
         else:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(obj):
-                    return {{
-                        {contents}
-                    }}
+                def _dump_function(obj, many):
+                    if many:
+                        return [{{{contents}}} for obj in obj]
+                    return {{{contents}}}
                 '''
             )
             entry_tpl = '"{key}": {get_val}'
@@ -433,9 +433,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
             # add entry
             entries.append(entry_tpl.format(key=key, get_val=val_code))
-
-        sep = ',\n        '
-        code = func_tpl.format(contents=sep.join(entries))
+        code = func_tpl.format(contents=', '.join(entries))
         return code, namespace
 
     def dump(self, obj, *, many=None):
@@ -459,7 +457,4 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         dump_function = self._dump_function
         if many is None:
             many = self.many
-        if many:
-            return [dump_function(o) for o in obj]
-        else:
-            return dump_function(obj)
+        return dump_function(obj, many)
