@@ -239,7 +239,7 @@ class Embed(Field):
         '''Return the output of the referenced object's schema's dump method.
 
         If the referenced object's schema was specified by name at the
-        :class:`Nested` field's creation, this is the time when this schema is
+        :class:`Embed` field's creation, this is the time when this schema is
         instantiated (this is done only once).
 
         Args:
