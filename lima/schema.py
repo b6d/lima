@@ -308,7 +308,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self.many = many
 
         # get code and namespace for the customized dump function
-        code, namespace = self._dump_function_code_ns(fields, ordered)
+        code, namespace = Schema._dump_function_code_ns(fields, ordered)
 
         # namespace for dump function: don't provide any builtins
         namespace['__builtins__'] = {}
