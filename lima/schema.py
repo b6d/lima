@@ -451,7 +451,5 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             collection of objects was marshalled)
 
         '''
-        dump_function = self._dump_function
-        if many is None:
-            many = self.many
-        return dump_function(obj, many)
+        # this more or less just calls the instance-specific dump function
+        return self._dump_function(obj, self.many if many is None else many)
