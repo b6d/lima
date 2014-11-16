@@ -1,5 +1,5 @@
 ===========
-Nested Data
+Linked Data
 ===========
 
 Most ORMs represent linked objects nested under an attribute of the linking
@@ -35,7 +35,7 @@ To serialize this construct, we have to tell lima that a :class:`Book` object
 has a :class:`Person` object nested inside, designated via the :attr:`author`
 attribute.
 
-For this we use a field of type :class:`lima.fields.Nested` and tell lima what
+For this we use a field of type :class:`lima.fields.Embed` and tell lima what
 data to expect by providing the ``schema`` parameter:
 
 .. code-block:: python
@@ -49,7 +49,7 @@ data to expect by providing the ``schema`` parameter:
 
     class BookSchema(Schema):
         title = fields.String()
-        author = fields.Nested(schema=PersonSchema)
+        author = fields.Embed(schema=PersonSchema)
 
     schema = BookSchema()
     schema.dump(book)
@@ -57,9 +57,9 @@ data to expect by providing the ``schema`` parameter:
     #  'title': The Old Man and the Sea'}
 
 Along with the mandatory keyword-only argument ``schema``,
-:class:`lima.fields.Nested` accepts the optional keyword-only-arguments we
+:class:`lima.fields.Embed` accepts the optional keyword-only-arguments we
 already know (``attr`` or ``get``). All other keyword arguments provided to
-:class:`lima.fields.Nested` get passed through to the constructor of the nested
+:class:`lima.fields.Embed` get passed through to the constructor of the linked
 schema. This allows us to do stuff like the following:
 
 .. code-block:: python
@@ -67,7 +67,7 @@ schema. This allows us to do stuff like the following:
 
     class BookSchema(Schema):
         title = fields.String()
-        author = fields.Nested(schema=PersonSchema, only='last_name')
+        author = fields.Embed(schema=PersonSchema, only='last_name')
 
     schema = BookSchema()
     schema.dump(book)
@@ -122,17 +122,17 @@ side that links back.
 
 To overcome the problem of definition order, lima supports lazy evaluation of
 schemas. Just pass the *qualified name* (or the *fully module-qualified name*)
-of a schema class to :class:`lima.fields.Nested` instead of the class itself:
+of a schema class to :class:`lima.fields.Embed` instead of the class itself:
 
 .. code-block:: python
     :emphasize-lines: 2,6,12,16
 
     class AuthorSchema(PersonSchema):
-        bestseller = fields.Nested(schema='BookSchema', exclude='author')
+        bestseller = fields.Embed(schema='BookSchema', exclude='author')
 
     class BookSchema(Schema):
         title = fields.String()
-        author = fields.Nested(schema=AuthorSchema, exclude='bestseller')
+        author = fields.Embed(schema=AuthorSchema, exclude='bestseller')
 
     author_schema = AuthorSchema()
     author_schema.dump(author)
@@ -200,7 +200,7 @@ for models that link to themselves - everything works as you'd expect:
             self.spouse = spouse
 
     class MarriedPersonSchema(PersonSchema):
-        spouse = fields.Nested(schema='MarriedPersonSchema', exclude='spouse')
+        spouse = fields.Embed(schema='MarriedPersonSchema', exclude='spouse')
 
 
 One-to-many and many-to-many Relationships
@@ -210,7 +210,7 @@ Until now, we've only dealt with one-to-one relations. What about one-to-many
 and many-to-many relations? Those link to collections of objects.
 
 We know the necessary building blocks already: Providing additional keyword
-arguments to :class:`lima.fields.Nested` passes them through to the specified
+arguments to :class:`lima.fields.Embed` passes them through to the specified
 schema's constructor. And providing ``many=True`` to a schema's construtor will
 have the schema marshalling collections - so:
 
@@ -232,11 +232,11 @@ have the schema marshalling collections - so:
     ]
 
     class AuthorSchema(PersonSchema):
-        books = fields.Nested(schema='BookSchema', exclude='author', many=True)
+        books = fields.Embed(schema='BookSchema', exclude='author', many=True)
 
     class BookSchema(Schema):
         title = fields.String()
-        author = fields.Nested(schema=AuthorSchema, exclude='books')
+        author = fields.Embed(schema=AuthorSchema, exclude='books')
 
     schema = AuthorSchema()
     schema.dump(author)
@@ -247,18 +247,18 @@ have the schema marshalling collections - so:
     #  'first_name': 'Virginia'}
 
 
-Nested Data Recap
+Linked Data Recap
 =================
 
-- You now know how to marshal nested objects (via a field of type
-  :class:`lima.fields.Nested`)
+- You now know how to marshal linked objects (via a field of type
+  :class:`lima.fields.Embed`)
 
-- You know about lazy evaluation of nested schemas and how to specify those via
+- You know about lazy evaluation of linked schemas and how to specify those via
   qualified and fully module-qualified names.
 
 - You know how to implement two-way relationships between objects (pass
-  ``exclude`` or ``only`` to the nested schema through
-  :class:`lima.fields.Nested`)
+  ``exclude`` or ``only`` to the linked schema through
+  :class:`lima.fields.Embed`)
 
-- You know how to marshal nested collections of objects (pass ``many=True`` to
-  the nested schema through :class:`lima.fields.Nested`)
+- You know how to marshal linked collections of objects (pass ``many=True`` to
+  the linked schema through :class:`lima.fields.Embed`)
