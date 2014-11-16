@@ -676,7 +676,7 @@ class TestSchemaInstantiation:
         )
         expected = dedent(
             '''\
-            def _dump_function(obj, namespace):
+            def _dump_function(obj):
                 return {
                     "foo": obj.foo_attr,
                     "bar": obj.bar
@@ -690,7 +690,7 @@ class TestSchemaInstantiation:
         )
         expected = dedent(
             '''\
-            def _dump_function(obj, namespace):
+            def _dump_function(obj):
                 return OrderedDict([
                     ("foo", obj.foo_attr),
                     ("bar", obj.bar)

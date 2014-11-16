@@ -310,9 +310,15 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         # get code/namespace for the customized dump function
         code, namespace = self._dump_function_code_ns(fields, ordered)
 
-        # this defines _dump_function in self's namespace
-        exec(code, globals(), self.__dict__)
-        self._namespace = namespace
+        # prepare namespace: provide OrderedDict and nothing else
+        namespace['OrderedDict'] = OrderedDict
+        namespace['__builtins__'] = {}
+
+        # this defines _dump_function inside namespace
+        exec(code, namespace)
+
+        # and set _dump_function attr to the new function
+        self._dump_function = namespace['_dump_function']
 
     @staticmethod
     def _field_value_code_ns(field, field_name, field_num):
@@ -334,19 +340,19 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         namespace = {}
         if hasattr(field, 'val'):
             # add constant-field-value-shortcut to namespace
-            key = 'val{}'.format(field_num)
-            namespace[key] = field.val
+            name = 'val{}'.format(field_num)
+            namespace[name] = field.val
 
             # later, get value using this shortcut
-            val_code = 'namespace["{}"]'.format(key)
+            val_code = name
 
         elif hasattr(field, 'get'):
             # add getter-shortcut to namespace
-            key = 'get{}'.format(field_num)
-            namespace[key] = field.get
+            name = 'get{}'.format(field_num)
+            namespace[name] = field.get
 
             # later, get value by calling this shortcut
-            val_code = 'namespace["{}"](obj)'.format(key)
+            val_code = '{}(obj)'.format(name)
 
         else:
             # neither constant val nor getter: try to get value via attr
@@ -362,11 +368,11 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         if hasattr(field, 'pack'):
             # add pack-shortcut to attributes
-            key = 'pack{}'.format(field_num)
-            namespace[key] = field.pack
+            name = 'pack{}'.format(field_num)
+            namespace[name] = field.pack
 
             # later, pass result field value to this shortcut
-            val_code = 'namespace["{}"]({})'.format(key, val_code)
+            val_code = '{}({})'.format(name, val_code)
 
         return val_code, namespace
 
@@ -391,7 +397,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if ordered:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(obj, namespace):
+                def _dump_function(obj):
                     return OrderedDict([
                         {contents}
                     ])
@@ -401,7 +407,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         else:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(obj, namespace):
+                def _dump_function(obj):
                     return {{
                         {contents}
                     }}
@@ -451,10 +457,9 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         '''
         dump_function = self._dump_function
-        namespace = self._namespace
         if many is None:
             many = self.many
         if many:
-            return [dump_function(o, namespace) for o in obj]
+            return [dump_function(o) for o in obj]
         else:
-            return dump_function(obj, namespace)
+            return dump_function(obj)
