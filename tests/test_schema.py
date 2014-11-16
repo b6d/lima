@@ -671,12 +671,12 @@ class TestSchemaInstantiation:
             foo = fields.String(attr='foo_attr')
             bar = fields.String()
 
-        code, ns = schema.Schema._dump_function_code_attrs(
+        code, ns = schema.Schema._dump_function_code_ns(
             TestSchema.__fields__, ordered=False
         )
         expected = dedent(
             '''\
-            def _dump_function(schema, obj):
+            def _dump_function(obj, namespace):
                 return {
                     "foo": obj.foo_attr,
                     "bar": obj.bar
@@ -685,12 +685,12 @@ class TestSchemaInstantiation:
         )
         assert code == expected
 
-        code, ns = schema.Schema._dump_function_code_attrs(
+        code, ns = schema.Schema._dump_function_code_ns(
             TestSchema.__fields__, ordered=True
         )
         expected = dedent(
             '''\
-            def _dump_function(schema, obj):
+            def _dump_function(obj, namespace):
                 return OrderedDict([
                     ("foo", obj.foo_attr),
                     ("bar", obj.bar)

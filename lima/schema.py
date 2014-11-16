@@ -307,18 +307,16 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self._ordered = ordered
         self.many = many
 
-        # get code for the customized dump function
-        code, attrs = self._dump_function_code_attrs(fields, ordered)
-
-        for k, v in attrs.items():
-            setattr(self, k, v)
+        # get code/namespace for the customized dump function
+        code, namespace = self._dump_function_code_ns(fields, ordered)
 
         # this defines _dump_function in self's namespace
         exec(code, globals(), self.__dict__)
+        self._namespace = namespace
 
     @staticmethod
-    def _field_value_code_attrs(field, field_name, field_num):
-        '''Get code/attrs to determine a field's serialized value.
+    def _field_value_code_ns(field, field_name, field_num):
+        '''Get code/namespace-dict to determine a field's serialized value.
 
         Args:
             field: A :class:`lima.fields.Field` instance.
@@ -328,28 +326,27 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             field_num: A schema-wide unique number for the field.
 
         Returns: A tuple consisting of: a) a fragment of Python code to
-            determine the field value *for the specific case of a schema
-            instance called ``"schema"`` serializing an object called
-            ``"obj"``* and b) a mapping of attribute names to attribute values
-            that the schema instance *must have* for this code to work.
+            determine the field's value and b) a namespace-dict containing
+            shortcuts to necessary values/functions for this code fragment to
+            work.
 
         '''
-        attrs = {}
+        namespace = {}
         if hasattr(field, 'val'):
-            # add constant-field-value-shortcut to attrs
-            val_name = '__val_{}'.format(field_num)
-            attrs[val_name] = field.val
+            # add constant-field-value-shortcut to namespace
+            key = 'val{}'.format(field_num)
+            namespace[key] = field.val
 
             # later, get value using this shortcut
-            val_code = 'schema.{}'.format(val_name)
+            val_code = 'namespace["{}"]'.format(key)
 
         elif hasattr(field, 'get'):
-            # add value-getter-shortcut to attrs
-            getter_name = '__get_{}'.format(field_num)
-            attrs[getter_name] = field.get
+            # add getter-shortcut to namespace
+            key = 'get{}'.format(field_num)
+            namespace[key] = field.get
 
             # later, get value by calling this shortcut
-            val_code = 'schema.{}(obj)'.format(getter_name)
+            val_code = 'namespace["{}"](obj)'.format(key)
 
         else:
             # neither constant val nor getter: try to get value via attr
@@ -365,17 +362,17 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         if hasattr(field, 'pack'):
             # add pack-shortcut to attributes
-            packer_name = '__pack_{}'.format(field_num)
-            attrs[packer_name] = field.pack
+            key = 'pack{}'.format(field_num)
+            namespace[key] = field.pack
 
             # later, pass result field value to this shortcut
-            val_code = 'schema.{}({})'.format(packer_name, val_code)
+            val_code = 'namespace["{}"]({})'.format(key, val_code)
 
-        return val_code, attrs
+        return val_code, namespace
 
     @staticmethod
-    def _dump_function_code_attrs(fields, ordered):
-        '''Get code/attrs for a customized dump function
+    def _dump_function_code_ns(fields, ordered):
+        '''Get code/namespace-dict for a customized dump function
 
         Args:
             fields: An ordered mapping of field names to fields
@@ -384,23 +381,17 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 objects, else make it return ordinary dict objects
 
         Returns: A tuple consisting of: a) a fragment of Python code to
-            define a dump function for a schema and b) a mapping of attribute
-            names to attribute values that the schema instance *must have* for
-            this code to work.
-
-        Note that even though the resulting code might *look* like a method
-        definition at first glance, it is *not*, since it will tied to a
-        specific Schema instance instead of to the Schema class like a method
-        would be. This means that ten Schema objects will have ten separate
-        dump functions associated with them.
+            define a dump function for a schema instance and b) a
+            namespace-dict containing shortcuts to necessary values/functions
+            for this code fragment to work.
 
         '''
-        attrs = {}
+        namespace = {}
         # get correct templates
         if ordered:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(schema, obj):
+                def _dump_function(obj, namespace):
                     return OrderedDict([
                         {contents}
                     ])
@@ -410,7 +401,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         else:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(schema, obj):
+                def _dump_function(obj, namespace):
                     return {{
                         {contents}
                     }}
@@ -423,10 +414,10 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # iterate over fields to fill up entries
         for field_num, (field_name, field) in enumerate(fields.items()):
-            val_code, field_attrs = Schema._field_value_code_attrs(
+            val_code, val_namespace = Schema._field_value_code_ns(
                 field, field_name, field_num
             )
-            attrs.update(field_attrs)
+            namespace.update(val_namespace)
 
             # try to guard against code injection via quotes in key
             key = str(field_name)
@@ -439,7 +430,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         sep = ',\n        '
         code = func_tpl.format(contents=sep.join(entries))
-        return code, attrs
+        return code, namespace
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
@@ -460,9 +451,10 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         '''
         dump_function = self._dump_function
+        namespace = self._namespace
         if many is None:
             many = self.many
         if many:
-            return [dump_function(self, o) for o in obj]
+            return [dump_function(o, namespace) for o in obj]
         else:
-            return dump_function(self, obj)
+            return dump_function(obj, namespace)
