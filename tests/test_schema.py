@@ -663,8 +663,8 @@ class TestSchemaInstantiation:
         with pytest.raises(ValueError):
             test_schema = TestSchema()
 
-    def test_get_dump_function_code(self):
-        '''Test if _get_dump_function_code gets a simple function right.'''
+    def test_dump_function_code(self):
+        '''Test if _dump_function_code gets a simple function right.'''
         from textwrap import dedent
 
         class TestSchema(schema.Schema):
@@ -681,7 +681,7 @@ class TestSchemaInstantiation:
                 }
             '''
         )
-        assert test_schema._get_dump_function_code() == expected
+        assert test_schema._dump_function_code() == expected
 
         test_schema = TestSchema(ordered=True)
         expected = dedent(
@@ -693,4 +693,4 @@ class TestSchemaInstantiation:
                 ])
             '''
         )
-        assert test_schema._get_dump_function_code() == expected
+        assert test_schema._dump_function_code() == expected

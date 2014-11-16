@@ -308,7 +308,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self.many = many
 
         # get code for the customized dump function
-        code = self._get_dump_function_code()
+        code = self._dump_function_code()
 
         # this defines _dump_function in self's namespace
         exec(code, globals(), self.__dict__)
@@ -370,7 +370,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         return val_code, attrs
 
-    def _get_dump_function_code(self):
+    def _dump_function_code(self):
         '''Get code for a customized dump function.'''
         # note that even _though dump_function might *look* like a method at
         # first glance, it is *not*, since it will tied to a specific Schema
