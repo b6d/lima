@@ -35,6 +35,7 @@ def person_schema_cls(str_field, int_field, date_field):
 class NonLocalSchema(schema.Schema):
     foo = fields.String()
 
+
 class TestHelperFunctions:
     '''Class collecting tests of helper functions.'''
 
