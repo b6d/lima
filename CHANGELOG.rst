@@ -11,6 +11,8 @@ Changelog
 
 - Remove ``fields.type_mapping``. Use ``fields.TYPE_MAPPING`` instead.
 
+- Deprecate ``fields.Nested`` in favour of ``fields.Embed``.
+
 - Small speed improvement when serializing collections.
 
 - Overall cleanup.
