@@ -310,14 +310,12 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         # get code/namespace for the customized dump function
         code, namespace = self._dump_function_code_ns(fields, ordered)
 
-        # prepare namespace: provide OrderedDict and nothing else
+        # namespace for dump function: provide OrderedDict and nothing else
         namespace['OrderedDict'] = OrderedDict
         namespace['__builtins__'] = {}
 
-        # this defines _dump_function inside namespace
+        # define _dump_function inside namespace, then set _dump_function attr
         exec(code, namespace)
-
-        # and set _dump_function attr to the new function
         self._dump_function = namespace['_dump_function']
 
     @staticmethod
