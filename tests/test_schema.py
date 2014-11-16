@@ -671,7 +671,9 @@ class TestSchemaInstantiation:
             foo = fields.String(attr='foo_attr')
             bar = fields.String()
 
-        test_schema = TestSchema()
+        code, ns = schema.Schema._dump_function_code_attrs(
+            TestSchema.__fields__, ordered=False
+        )
         expected = dedent(
             '''\
             def _dump_function(schema, obj):
@@ -681,9 +683,11 @@ class TestSchemaInstantiation:
                 }
             '''
         )
-        assert test_schema._dump_function_code() == expected
+        assert code == expected
 
-        test_schema = TestSchema(ordered=True)
+        code, ns = schema.Schema._dump_function_code_attrs(
+            TestSchema.__fields__, ordered=True
+        )
         expected = dedent(
             '''\
             def _dump_function(schema, obj):
@@ -693,4 +697,4 @@ class TestSchemaInstantiation:
                 ])
             '''
         )
-        assert test_schema._dump_function_code() == expected
+        assert code == expected

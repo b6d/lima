@@ -308,7 +308,10 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self.many = many
 
         # get code for the customized dump function
-        code = self._dump_function_code()
+        code, attrs = self._dump_function_code_attrs(fields, ordered)
+
+        for k, v in attrs.items():
+            setattr(self, k, v)
 
         # this defines _dump_function in self's namespace
         exec(code, globals(), self.__dict__)
@@ -370,16 +373,31 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         return val_code, attrs
 
-    def _dump_function_code(self):
-        '''Get code for a customized dump function.'''
-        # note that even _though dump_function might *look* like a method at
-        # first glance, it is *not*, since it will tied to a specific Schema
-        # instance instead of to the Schema class like a method would be. This
-        # means that ten Schema objects will have ten separate dump functions
-        # associated with them.
+    @staticmethod
+    def _dump_function_code_attrs(fields, ordered):
+        '''Get code/attrs for a customized dump function
 
+        Args:
+            fields: An ordered mapping of field names to fields
+
+            ordered: If True, make the resulting function return OrderedDict
+                objects, else make it return ordinary dict objects
+
+        Returns: A tuple consisting of: a) a fragment of Python code to
+            define a dump function for a schema and b) a mapping of attribute
+            names to attribute values that the schema instance *must have* for
+            this code to work.
+
+        Note that even though the resulting code might *look* like a method
+        definition at first glance, it is *not*, since it will tied to a
+        specific Schema instance instead of to the Schema class like a method
+        would be. This means that ten Schema objects will have ten separate
+        dump functions associated with them.
+
+        '''
+        attrs = {}
         # get correct templates
-        if self._ordered:
+        if ordered:
             func_tpl = textwrap.dedent(
                 '''\
                 def _dump_function(schema, obj):
@@ -404,11 +422,11 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         entries = []
 
         # iterate over fields to fill up entries
-        for field_num, (field_name, field) in enumerate(self._fields.items()):
-            val_code, attrs = Schema._field_value_code_attrs(field, field_name,
-                                                             field_num)
-            for attr_name, attr in attrs.items():
-                setattr(self, attr_name, attr)
+        for field_num, (field_name, field) in enumerate(fields.items()):
+            val_code, field_attrs = Schema._field_value_code_attrs(
+                field, field_name, field_num
+            )
+            attrs.update(field_attrs)
 
             # try to guard against code injection via quotes in key
             key = str(field_name)
@@ -421,7 +439,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         sep = ',\n        '
         code = func_tpl.format(contents=sep.join(entries))
-        return code
+        return code, attrs
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
