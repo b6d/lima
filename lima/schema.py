@@ -310,8 +310,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         # get code and namespace for the customized dump function
         code, namespace = self._dump_function_code_ns(fields, ordered)
 
-        # namespace for dump function: provide OrderedDict and nothing else
-        namespace['OrderedDict'] = OrderedDict
+        # namespace for dump function: don't provide any builtins
         namespace['__builtins__'] = {}
 
         # define dump function inside namespace, then set _dump_function attr
@@ -388,7 +387,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             objects necessary for this code to work.
 
         '''
-        namespace = {}
+        # Namespace must contain OrderedDict if we want ordered output.
+        namespace = {'OrderedDict': OrderedDict} if ordered else {}
 
         # Get correct templates depending on "ordered"
         if ordered:
