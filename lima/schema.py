@@ -307,15 +307,15 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self._ordered = ordered
         self.many = many
 
-        # get code and namespace for the customized dump function
-        code, namespace = Schema._dump_function_code_ns(fields, ordered)
+        # get code and namespace for customized dump function
+        code, namespace = Schema._dump_fields_code_ns(fields, ordered)
 
-        # namespace for dump function: don't provide any builtins
+        # dump function namespace: don't provide any builtins
         namespace['__builtins__'] = {}
 
-        # define dump function inside namespace, then set _dump_function attr
+        # define dump function inside namespace, then set _dump_fields attr
         exec(code, namespace)
-        self._dump_function = namespace['_dump_function']
+        self._dump_fields = namespace['dump_fields']
 
     @staticmethod
     def _field_value_code_ns(field, field_name, field_num):
@@ -373,8 +373,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         return val_code, namespace
 
     @staticmethod
-    def _dump_function_code_ns(fields, ordered):
-        '''Get code and namespace dict for a customized dump function
+    def _dump_fields_code_ns(fields, ordered):
+        '''Get code and namespace dict for a customized dump_fields function.
 
         Args:
             fields: An ordered mapping of field names to fields
@@ -383,8 +383,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 objects, else make it return ordinary dict objects
 
         Returns: A tuple consisting of: a) Python code to define a dump
-            function for a schema instance and b) a namespace dict containing
-            objects necessary for this code to work.
+            function for fields and b) a namespace dict containing objects
+            necessary for this code to work.
 
         '''
         # Namespace must contain OrderedDict if we want ordered output.
@@ -394,7 +394,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if ordered:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(obj, many):
+                def dump_fields(obj, many):
                     if many:
                         return [OrderedDict([{contents}]) for obj in obj]
                     return OrderedDict([{contents}])
@@ -404,7 +404,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         else:
             func_tpl = textwrap.dedent(
                 '''\
-                def _dump_function(obj, many):
+                def dump_fields(obj, many):
                     if many:
                         return [{{{contents}}} for obj in obj]
                     return {{{contents}}}
@@ -430,6 +430,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
             # add entry
             entries.append(entry_tpl.format(key=key, get_val=val_code))
+
         code = func_tpl.format(contents=', '.join(entries))
         return code, namespace
 
@@ -452,4 +453,4 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         '''
         # this more or less just calls the instance-specific dump function
-        return self._dump_function(obj, self.many if many is None else many)
+        return self._dump_fields(obj, self.many if many is None else many)
