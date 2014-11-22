@@ -11,7 +11,9 @@ Changelog
 
 - Remove ``fields.type_mapping``. Use ``fields.TYPE_MAPPING`` instead.
 
-- Overall cleanup and improvements.
+- Small speed improvement when serializing collections.
+
+- Overall cleanup.
 
 
 0.3.1 (2014-11-11)
