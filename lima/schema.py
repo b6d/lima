@@ -72,13 +72,24 @@ def _mangle_name(name):
         return name
     return mapping[before] + after
 
-def _oid_field(fields):
-    candidates = {k: v for k, v in fields.items() if v.oid}
-    if not candidates:
-        return None
-    if len(candidates) == 1:
-        return list(candidates.items())[0]
-    raise ValueError('Multiple oid fields.')  # TODO: better message
+
+def _contains_oid_field(fields):
+    '''Return True if any of fields claims to be an oid field, else False.'''
+    return any(f.oid for f in fields.values())
+
+
+def _oid_name_field(fields):
+    '''Return name and field of the only oid field in fields.
+
+    Raises:
+        ValueError: if fields doesn't contain exactly one oid field.
+    '''
+    names = [k for k, v in fields.items() if v.oid]
+    if len(names) != 1:
+        raise ValueError('Not exactly one oid field.')
+    name = names[0]
+    return name, fields[name]
+
 
 # Schema Metaclass ############################################################
 
@@ -306,17 +317,16 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self._ordered = ordered
         self.many = many
 
-        # get code and namespace for customized dump function
+        # get code and namespace for customized dump function and create it
         code, namespace = Schema._dump_fields_code_ns(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
-        oid_tuple = _oid_field(fields)
-        if oid_tuple:
-            field_name, field = oid_tuple
-            code, namespace = Schema._dump_field_code_ns(field, field_name)
-            namespace['__builtins__'] = {}
-            exec(code, namespace)
-            self.oid = namespace['dump_field']
+        # if oid field exists, get code for customized oid func and create it
+        if _contains_oid_field(fields):
+            name, field = _oid_name_field(fields)
+            code, namespace = Schema._dump_field_code_ns(field, name)
+            self.oid = util.make_function('dump_field', code, namespace)
+
 
 
     @staticmethod
