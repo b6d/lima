@@ -309,13 +309,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # get code and namespace for customized dump function
         code, namespace = Schema._dump_fields_code_ns(fields, ordered)
-
-        # dump function namespace: don't provide any builtins
-        namespace['__builtins__'] = {}
-
-        # define dump function inside namespace, then set _dump_fields attr
-        exec(code, namespace)
-        self._dump_fields = namespace['dump_fields']
+        self._dump_fields = util.make_function('dump_fields', code, namespace)
 
     @staticmethod
     def _field_value_code_ns(field, field_name, field_num):
