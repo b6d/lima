@@ -327,8 +327,6 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             code, namespace = Schema._dump_field_code_item(field, name)
             self.oid = util.make_function('dump_field', code, namespace)
 
-
-
     @staticmethod
     def _field_value_code_item(field, field_name, field_num):
         '''Get (code, namespace)-tuple to determine a field's serialized value.
