@@ -72,6 +72,13 @@ def _mangle_name(name):
         return name
     return mapping[before] + after
 
+def _oid_field(fields):
+    candidates = {k: v for k, v in fields.items() if v.oid}
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return list(candidates.items())[0]
+    raise ValueError('Multiple oid fields.')  # TODO: better message
 
 # Schema Metaclass ############################################################
 
@@ -303,6 +310,15 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         code, namespace = Schema._dump_fields_code_ns(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
+        oid_tuple = _oid_field(fields)
+        if oid_tuple:
+            field_name, field = oid_tuple
+            code, namespace = Schema._dump_field_code_ns(field, field_name)
+            namespace['__builtins__'] = {}
+            exec(code, namespace)
+            self.oid = namespace['dump_field']
+
+
     @staticmethod
     def _field_value_code_ns(field, field_name, field_num):
         '''Get code and namespace dict to determine a field's serialized value.
@@ -357,6 +373,30 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             val_code = '{}({})'.format(name, val_code)
 
         return val_code, namespace
+
+    @staticmethod
+    def _dump_field_code_ns(field, field_name):
+        '''Get code and namespace dict for a customized dump_field function
+
+        Args:
+            field: The field.
+
+            field_name: The name (key) of the field.
+
+        Returns: A tuple consisting of: a) Python code to define the function
+            and b) a namespace dict containing objects necessary for this code
+            to work.
+
+        '''
+        func_tpl = textwrap.dedent(
+            '''\
+            def dump_field(obj):
+                return {val_code}
+            '''
+        )
+        val_code, namespace = Schema._field_value_code_ns(field, field_name, 0)
+        code = func_tpl.format(val_code=val_code)
+        return code, namespace
 
     @staticmethod
     def _dump_fields_code_ns(fields, ordered):
