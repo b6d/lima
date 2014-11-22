@@ -78,8 +78,8 @@ def _contains_oid_field(fields):
     return any(f.oid for f in fields.values())
 
 
-def _oid_name_field(fields):
-    '''Return name and field of the only oid field in fields.
+def _oid_field_item(fields):
+    '''Return (name, field)-tuple of the only oid field in fields.
 
     Raises:
         ValueError: if fields doesn't contain exactly one oid field.
@@ -318,20 +318,20 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self.many = many
 
         # get code and namespace for customized dump function and create it
-        code, namespace = Schema._dump_fields_code_ns(fields, ordered)
+        code, namespace = Schema._dump_fields_code_item(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
         # if oid field exists, get code for customized oid func and create it
         if _contains_oid_field(fields):
-            name, field = _oid_name_field(fields)
-            code, namespace = Schema._dump_field_code_ns(field, name)
+            name, field = _oid_field_item(fields)
+            code, namespace = Schema._dump_field_code_item(field, name)
             self.oid = util.make_function('dump_field', code, namespace)
 
 
 
     @staticmethod
-    def _field_value_code_ns(field, field_name, field_num):
-        '''Get code and namespace dict to determine a field's serialized value.
+    def _field_value_code_item(field, field_name, field_num):
+        '''Get (code, namespace)-tuple to determine a field's serialized value.
 
         Args:
             field: A :class:`lima.fields.Field` instance.
@@ -385,8 +385,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         return val_code, namespace
 
     @staticmethod
-    def _dump_field_code_ns(field, field_name):
-        '''Get code and namespace dict for a customized dump_field function
+    def _dump_field_code_item(field, field_name):
+        '''Get (code, namespace)-tuple for a customized dump_field function.
 
         Args:
             field: The field.
@@ -404,13 +404,14 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 return {val_code}
             '''
         )
-        val_code, namespace = Schema._field_value_code_ns(field, field_name, 0)
+        val_code, namespace = Schema._field_value_code_item(field,
+                                                            field_name, 0)
         code = func_tpl.format(val_code=val_code)
         return code, namespace
 
     @staticmethod
-    def _dump_fields_code_ns(fields, ordered):
-        '''Get code and namespace dict for a customized dump_fields function.
+    def _dump_fields_code_item(fields, ordered):
+        '''Get (code, namespace)-tuple for a customized dump_fields function.
 
         Args:
             fields: An ordered mapping of field names to fields
@@ -453,7 +454,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # iterate over fields to fill up entries
         for field_num, (field_name, field) in enumerate(fields.items()):
-            val_code, val_namespace = Schema._field_value_code_ns(
+            val_code, val_namespace = Schema._field_value_code_item(
                 field, field_name, field_num
             )
             namespace.update(val_namespace)

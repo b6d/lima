@@ -665,14 +665,14 @@ class TestSchemaInstantiation:
             test_schema = TestSchema()
 
     def test_dump_fields_code(self):
-        '''Test if _dump_fields_code_ns gets a simple function right.'''
+        '''Test if _dump_fields_code_item gets a simple function right.'''
         from textwrap import dedent
 
         class TestSchema(schema.Schema):
             foo = fields.String(attr='foo_attr')
             bar = fields.String()
 
-        code, ns = schema.Schema._dump_fields_code_ns(
+        code, ns = schema.Schema._dump_fields_code_item(
             TestSchema.__fields__, ordered=False
         )
         expected = dedent(
@@ -685,7 +685,7 @@ class TestSchemaInstantiation:
         )
         assert code == expected
 
-        code, ns = schema.Schema._dump_fields_code_ns(
+        code, ns = schema.Schema._dump_fields_code_item(
             TestSchema.__fields__, ordered=True
         )
         expected = dedent(
