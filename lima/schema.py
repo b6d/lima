@@ -35,7 +35,7 @@ def _fields_from_bases(bases):
 def _fields_include(fields, include):
     '''Return a copy of fields with fields in include included.'''
     util.ensure_mapping(include)
-    util.ensure_only_instances_of(include, str)
+    util.ensure_only_instances_of(include.keys(), str)
     util.ensure_only_instances_of(include.values(), abc.FieldABC)
     result = fields.copy()
     result.update(include)
