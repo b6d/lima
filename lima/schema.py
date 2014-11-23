@@ -46,22 +46,14 @@ def _fields_exclude(fields, remove):
     '''Return a copy of fields with fields mentioned in exclude missing.'''
     util.ensure_only_instances_of(remove, str)
     util.ensure_subset_of(remove, fields)
-    result = OrderedDict()
-    for k, v in fields.items():
-        if k not in remove:
-            result[k] = v
-    return result
+    return OrderedDict([(k, v) for k, v in fields.items() if k not in remove])
 
 
 def _fields_only(fields, only):
     '''Return a copy of fields containing only fields mentioned in only.'''
     util.ensure_only_instances_of(only, str)
     util.ensure_subset_of(only, fields)
-    result = OrderedDict()
-    for k, v in fields.items():
-        if k in only:
-            result[k] = v
-    return result
+    return OrderedDict([(k, v) for k, v in fields.items() if k in only])
 
 
 def _mangle_name(name):
