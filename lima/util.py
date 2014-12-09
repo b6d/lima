@@ -23,13 +23,20 @@ def complain_about(name):
         raise
 
 
+# The code for this class is taken directly from the Python 3.4 standard
+# library (to support Python 3.3), licensed under the PSF License (see
+# https://docs.python.org/3/license.html)
 class suppress:
     '''Context manager to suppress specified exceptions
 
-    This context manager is taken directly from the Python 3.4 standard library
-    to get support for Python 3.3.
+    After the exception is suppressed, execution proceeds with the next
+    statement following the with statement.
 
-    See https://docs.python.org/3.4/library/contextlib.html#contextlib.suppress
+         with suppress(FileNotFoundError):
+             os.remove(somefile)
+         # Execution still resumes here if the file was already removed
+
+    Backported for Python 3.3 from Python 3.4 (see source for license info).
 
     '''
     def __init__(self, *exceptions):
@@ -39,6 +46,15 @@ class suppress:
         pass
 
     def __exit__(self, exctype, excinst, exctb):
+        # Unlike isinstance and issubclass, CPython exception handling
+        # currently only looks at the concrete type hierarchy (ignoring
+        # the instance and subclass checking hooks). While Guido considers
+        # that a bug rather than a feature, it's a fairly hard one to fix
+        # due to various internal implementation details. suppress provides
+        # the simpler issubclass based semantics, rather than trying to
+        # exactly reproduce the limitations of the CPython interpreter.
+        #
+        # See http://bugs.python.org/issue12029 for more details
         return exctype is not None and issubclass(exctype, self._exceptions)
 
 
