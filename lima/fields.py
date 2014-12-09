@@ -4,6 +4,7 @@ import datetime
 
 from lima import abc
 from lima import registry
+from lima.util import reify
 
 
 class Field(abc.FieldABC):
@@ -218,22 +219,36 @@ class Embed(Field):
                 msg = ('No keyword args must be supplied'
                        'if schema is a Schema object.')
                 raise ValueError(msg)
-            self.schema_inst = schema
+            self._schema_inst = schema
 
         # in case schema is a schema class
         elif isinstance(schema, type) and issubclass(schema, abc.SchemaABC):
-            self.schema_inst = schema(**kwargs)
+            self._schema_inst = schema(**kwargs)
 
         # in case schema is a schema name: save args for later instantiation
         elif isinstance(schema, str):
-            self.schema_inst = None
-            self.schema_name = schema
-            self.schema_kwargs = kwargs
+            self._schema_inst = None
+            self._schema_name = schema
+            self._schema_kwargs = kwargs
 
         # otherwise fail
         else:
             msg = 'Illegal type for schema param: {}'
             raise TypeError(msg.format(type(schema)))
+
+    @reify
+    def schema_inst(self):
+        '''Return the associated Schema instance (reified method).
+
+        If no associated Schema instance exists at call time (because only a
+        Schema class name was supplied to the constructor), find the Schema
+        class in the global registry and instantiate it.
+
+        '''
+        if not self._schema_inst:
+            cls = registry.global_registry.get(self._schema_name)
+            self._schema_inst = cls(**self._schema_kwargs)
+        return self._schema_inst
 
     def pack(self, val):
         '''Return the output of the referenced object's schema's dump method.
@@ -250,13 +265,6 @@ class Embed(Field):
             :meth:`lima.schema.Schema.dump` method.
 
         '''
-        # if schema_inst doesn't exist yet (because a schema class name was
-        # supplied to the constructor), find the schema class in the global
-        # registry and instantiate it.
-        if not self.schema_inst:
-            cls = registry.global_registry.get(self.schema_name)
-            self.schema_inst = cls(**self.schema_kwargs)
-
         return self.schema_inst.dump(val) if val is not None else None
 
 

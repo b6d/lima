@@ -110,7 +110,7 @@ def test_datetime_pack():
 
 def test_embed_by_name():
     field = fields.Embed(schema='NonExistentSchema')
-    assert field.schema_name == 'NonExistentSchema'
+    assert field._schema_name == 'NonExistentSchema'
 
 
 def test_embed_error_on_illegal_schema_spec():
