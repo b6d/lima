@@ -42,6 +42,34 @@ def test_complain_about():
         assert str(e).startswith('bar')
 
 
+# Adapted from Pyramid's test suite, licensed under the RPL
+class TestReify:
+    '''Class collecting tests of helper functions.'''
+
+    class Dummy:
+        pass
+
+    def test__get__with_instance(self):
+        def wrapee(inst):
+            return 42
+        decorated = util.reify(wrapee)
+        inst = TestReify.Dummy()
+        result = decorated.__get__(instance=inst, owner=...)
+        assert result == 42
+        assert inst.__dict__['wrapee'] == 42
+
+    def test__get__without_instance(self):
+        decorated = util.reify(None)
+        result = decorated.__get__(instance=None, owner=...)
+        assert result == decorated
+
+    def test__doc__copied(self):
+        def wrapee(inst):
+            '''My docstring'''
+        decorated = util.reify(wrapee)
+        assert decorated.__doc__ == 'My docstring'
+
+
 def test_vector_context():
     '''Test if vector context boxes scalars into lists.'''
     assert util.vector_context([]) == []
@@ -126,6 +154,7 @@ def test_only_instances_of():
 
     with pytest.raises(TypeError):
         util.ensure_only_instances_of([1, 2, 3.3, 4], int)
+
 
 def test_make_function():
     code = 'def func_in_namespace(): return 1'
