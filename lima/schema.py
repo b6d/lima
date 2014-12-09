@@ -325,7 +325,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if _contains_oid_field(fields):
             name, field = _oid_field_item(fields)
             code, namespace = Schema._dump_field_code_item(field, name)
-            self.oid = util.make_function('dump_field', code, namespace)
+            self._oid = util.make_function('dump_field', code, namespace)
 
     @staticmethod
     def _field_value_code_item(field, field_name, field_num):
@@ -398,7 +398,9 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         '''
         func_tpl = textwrap.dedent(
             '''\
-            def dump_field(obj):
+            def dump_field(obj, many):
+                if many:
+                    return [{val_code} for obj in obj]
                 return {val_code}
             '''
         )
@@ -468,6 +470,23 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         code = func_tpl.format(contents=', '.join(entries))
         return code, namespace
+
+    def oid(self, obj, *, many=None):
+        '''Return a marshalled representation of the oid for obj.
+
+        Args:
+            obj: The object (or collection of objects) to marshall.
+
+            many: Wether obj is a single object or a collection of objects. If
+                ``many`` is ``None``, the value of the instance's
+                :attr:`many` attribute is used.
+
+        Returns:
+            TODO
+
+        '''
+        # this more or less just calls the instance-specific dump function
+        return self._oid(obj, self.many if many is None else many)
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
