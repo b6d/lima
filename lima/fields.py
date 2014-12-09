@@ -149,7 +149,84 @@ class DateTime(Field):
         return val.isoformat() if val is not None else None
 
 
-class Embed(Field):
+class _LinkedObjectField(Field):
+    '''A field that references the schema of a linked object.
+
+    Args:
+        schema: The schema of the linked object. This can be specified via a
+            schema *object,* a schema *class* (that will get instantiated
+            immediately) or the qualified *name* of a schema class (for when
+            the named schema has not been defined at the time of the
+            :class:`Embed` object's creation). If two or more schema classes
+            with the same name exist in different modules, the schema class
+            name has to be fully module-qualified (see the :ref:`entry on class
+            names <on_class_names>` for clarification of these concepts).
+            Schemas defined within a local namespace can not be referenced by
+            name.
+
+        attr: The optional name of the corresponding attribute.
+
+        get: An optional getter function accepting an object as its only
+            parameter and returning the field value.
+
+        val: An optional constant value for the field.
+
+        kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
+            constructor when the time has come to instance it. Must be empty if
+            ``schema`` is a :class:`lima.schema.Schema` object.
+
+    Raises:
+        ValueError: If ``kwargs`` are specified even if ``schema`` is a
+            :class:`lima.schema.Schema` *object.*
+
+        TypeError: If ``schema`` has the wrong type.
+
+    '''
+    def __init__(self, *, schema, attr=None, get=None, val=None, **kwargs):
+        super().__init__(attr=attr, get=get, val=val)
+
+        # in case schema is a Schema object
+        if isinstance(schema, abc.SchemaABC):
+            if kwargs:
+                msg = ('No keyword args must be supplied'
+                       'if schema is a Schema object.')
+                raise ValueError(msg)
+            self._schema_inst = schema
+
+        # in case schema is a schema class
+        elif isinstance(schema, type) and issubclass(schema, abc.SchemaABC):
+            self._schema_inst = schema(**kwargs)
+
+        # in case schema is a schema name: save args for later instantiation
+        elif isinstance(schema, str):
+            self._schema_inst = None
+            self._schema_name = schema
+            self._schema_kwargs = kwargs
+
+        # otherwise fail
+        else:
+            msg = 'Illegal type for schema param: {}'
+            raise TypeError(msg.format(type(schema)))
+
+    @reify
+    def schema_inst(self):
+        '''Return the associated Schema instance (reified method).
+
+        If no associated Schema instance exists at call time (because only a
+        Schema class name was supplied to the constructor), find the Schema
+        class in the global registry and instantiate it.
+
+        '''
+        if not self._schema_inst:
+            cls = registry.global_registry.get(self._schema_name)
+            self._schema_inst = cls(**self._schema_kwargs)
+        return self._schema_inst
+
+    def pack(self, val):
+        raise NotImplementedError
+
+
+class Embed(_LinkedObjectField):
     '''A Field to embed linked object(s).
 
     Args:
@@ -210,62 +287,39 @@ class Embed(Field):
         user = Embed(attr='login_user', schema=PersonSchema)
 
     '''
-    def __init__(self, *, schema, attr=None, get=None, val=None, **kwargs):
-        super().__init__(attr=attr, get=get, val=val)
-
-        # in case schema is a Schema object
-        if isinstance(schema, abc.SchemaABC):
-            if kwargs:
-                msg = ('No keyword args must be supplied'
-                       'if schema is a Schema object.')
-                raise ValueError(msg)
-            self._schema_inst = schema
-
-        # in case schema is a schema class
-        elif isinstance(schema, type) and issubclass(schema, abc.SchemaABC):
-            self._schema_inst = schema(**kwargs)
-
-        # in case schema is a schema name: save args for later instantiation
-        elif isinstance(schema, str):
-            self._schema_inst = None
-            self._schema_name = schema
-            self._schema_kwargs = kwargs
-
-        # otherwise fail
-        else:
-            msg = 'Illegal type for schema param: {}'
-            raise TypeError(msg.format(type(schema)))
-
-    @reify
-    def schema_inst(self):
-        '''Return the associated Schema instance (reified method).
-
-        If no associated Schema instance exists at call time (because only a
-        Schema class name was supplied to the constructor), find the Schema
-        class in the global registry and instantiate it.
-
-        '''
-        if not self._schema_inst:
-            cls = registry.global_registry.get(self._schema_name)
-            self._schema_inst = cls(**self._schema_kwargs)
-        return self._schema_inst
-
     def pack(self, val):
-        '''Return the output of the referenced object's schema's dump method.
-
-        If the referenced object's schema was specified by name at the
-        :class:`Embed` field's creation, this is the time when this schema is
-        instantiated (this is done only once).
+        '''Return the output of the linked object's schema's dump method.
 
         Args:
             val: The nested object to convert.
 
         Returns:
-            The output of the referenced :class:`lima.schema.Schema`'s
-            :meth:`lima.schema.Schema.dump` method.
+            The output of the linked :class:`lima.schema.Schema`'s
+            :meth:`lima.schema.Schema.dump` method (or None if ``val`` is
+            None).
 
         '''
         return self.schema_inst.dump(val) if val is not None else None
+
+
+class Reference(_LinkedObjectField):
+    '''A Field to reference linked object(s).
+
+    Constructor arguments are similar to those of :class:`Embed`.
+
+    '''
+    def pack(self, val):
+        '''Return the output of the linked object's schema's oid method.
+
+        Args:
+            val: The nested object to convert.
+
+        Returns:
+            The output of the linked :class:`lima.schema.Schema`'s
+            :meth:`lima.schema.Schema.oid` method (or None if ``val`` is None).
+
+        '''
+        return self.schema_inst.oid(val) if val is not None else None
 
 
 Nested = Embed
