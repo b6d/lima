@@ -91,6 +91,150 @@ def _oid_field_item(fields):
     return name, fields[name]
 
 
+def _field_value_code_item(field, field_name, field_num):
+    '''Get (code, namespace)-tuple to determine a field's serialized value.
+
+    Args:
+        field: A :class:`lima.fields.Field` instance.
+
+        field_name: The name (key) of the field.
+
+        field_num: A schema-wide unique number for the field.
+
+    Returns:
+        A tuple consisting of: a) a fragment of Python code to determine the
+        field's value and b) a namespace dict containing objects necessary for
+        this code fragment to work.
+
+    '''
+    namespace = {}
+    if hasattr(field, 'val'):
+        # add constant-field-value-shortcut to namespace
+        name = 'val{}'.format(field_num)
+        namespace[name] = field.val
+
+        # later, get value using this shortcut
+        val_code = name
+
+    elif hasattr(field, 'get'):
+        # add getter-shortcut to namespace
+        name = 'get{}'.format(field_num)
+        namespace[name] = field.get
+
+        # later, get value by calling this shortcut
+        val_code = '{}(obj)'.format(name)
+
+    else:
+        # neither constant val nor getter: try to get value via attr
+        # (if attr is not specified, use field name as attr)
+        obj_attr = getattr(field, 'attr', field_name)
+
+        if not str.isidentifier(obj_attr) or keyword.iskeyword(obj_attr):
+            msg = 'Not a valid attribute name: {!r}'
+            raise ValueError(msg.format(obj_attr))
+
+        # later, get value using obj_attr
+        val_code = 'obj.{}'.format(obj_attr)
+
+    if hasattr(field, 'pack'):
+        # add pack-shortcut to attributes
+        name = 'pack{}'.format(field_num)
+        namespace[name] = field.pack
+
+        # later, pass result field value to this shortcut
+        val_code = '{}({})'.format(name, val_code)
+
+    return val_code, namespace
+
+
+def _dump_field_code_item(field, field_name):
+    '''Get (code, namespace)-tuple for a customized dump_field function.
+
+    Args:
+        field: The field.
+
+        field_name: The name (key) of the field.
+
+    Returns:
+        A tuple consisting of: a) Python code to define the function and b) a
+        namespace dict containing objects necessary for this code to work.
+
+    '''
+    func_tpl = textwrap.dedent(
+        '''\
+        def dump_field(obj, many):
+            if many:
+                return [{val_code} for obj in obj]
+            return {val_code}
+        '''
+    )
+    val_code, namespace = _field_value_code_item(field, field_name, 0)
+    code = func_tpl.format(val_code=val_code)
+    return code, namespace
+
+
+def _dump_fields_code_item(fields, ordered):
+    '''Get (code, namespace)-tuple for a customized dump_fields function.
+
+    Args:
+        fields: An ordered mapping of field names to fields
+
+        ordered: If True, make the resulting function return OrderedDict
+            objects, else make it return ordinary dict objects.
+
+    Returns:
+        A tuple consisting of: a) Python code to define a dump function for
+        fields and b) a namespace dict containing objects necessary for this
+        code to work.
+
+    '''
+    # Namespace must contain OrderedDict if we want ordered output.
+    namespace = {'OrderedDict': OrderedDict} if ordered else {}
+
+    # Get correct templates depending on "ordered"
+    if ordered:
+        func_tpl = textwrap.dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [OrderedDict([{contents}]) for obj in obj]
+                return OrderedDict([{contents}])
+            '''
+        )
+        entry_tpl = '("{key}", {get_val})'
+    else:
+        func_tpl = textwrap.dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [{{{contents}}} for obj in obj]
+                return {{{contents}}}
+            '''
+        )
+        entry_tpl = '"{key}": {get_val}'
+
+    # one entry per field
+    entries = []
+
+    # iterate over fields to fill up entries
+    for field_num, (field_name, field) in enumerate(fields.items()):
+        val_code, val_namespace = _field_value_code_item(field, field_name,
+                                                         field_num)
+        namespace.update(val_namespace)
+
+        # try to guard against code injection via quotes in key
+        key = str(field_name)
+        if '"' in key or "'" in key:
+            msg = 'Quotes are not allowed in field names: {}'
+            raise ValueError(msg.format(key))
+
+        # add entry
+        entries.append(entry_tpl.format(key=key, get_val=val_code))
+
+    code = func_tpl.format(contents=', '.join(entries))
+    return code, namespace
+
+
 # Schema Metaclass ############################################################
 
 class SchemaMeta(type):
@@ -318,158 +462,14 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self.many = many
 
         # get code and namespace for customized dump function and create it
-        code, namespace = Schema._dump_fields_code_item(fields, ordered)
+        code, namespace = _dump_fields_code_item(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
         # if oid field exists, get code for customized oid func and create it
         if _contains_oid_field(fields):
             name, field = _oid_field_item(fields)
-            code, namespace = Schema._dump_field_code_item(field, name)
+            code, namespace = _dump_field_code_item(field, name)
             self._oid = util.make_function('dump_field', code, namespace)
-
-    @staticmethod
-    def _field_value_code_item(field, field_name, field_num):
-        '''Get (code, namespace)-tuple to determine a field's serialized value.
-
-        Args:
-            field: A :class:`lima.fields.Field` instance.
-
-            field_name: The name (key) of the field.
-
-            field_num: A schema-wide unique number for the field.
-
-        Returns: A tuple consisting of: a) a fragment of Python code to
-            determine the field's value and b) a namespace dict containing
-            objects necessary for this code fragment to work.
-
-        '''
-        namespace = {}
-        if hasattr(field, 'val'):
-            # add constant-field-value-shortcut to namespace
-            name = 'val{}'.format(field_num)
-            namespace[name] = field.val
-
-            # later, get value using this shortcut
-            val_code = name
-
-        elif hasattr(field, 'get'):
-            # add getter-shortcut to namespace
-            name = 'get{}'.format(field_num)
-            namespace[name] = field.get
-
-            # later, get value by calling this shortcut
-            val_code = '{}(obj)'.format(name)
-
-        else:
-            # neither constant val nor getter: try to get value via attr
-            # (if attr is not specified, use field name as attr)
-            obj_attr = getattr(field, 'attr', field_name)
-
-            if not str.isidentifier(obj_attr) or keyword.iskeyword(obj_attr):
-                msg = 'Not a valid attribute name: {!r}'
-                raise ValueError(msg.format(obj_attr))
-
-            # later, get value using obj_attr
-            val_code = 'obj.{}'.format(obj_attr)
-
-        if hasattr(field, 'pack'):
-            # add pack-shortcut to attributes
-            name = 'pack{}'.format(field_num)
-            namespace[name] = field.pack
-
-            # later, pass result field value to this shortcut
-            val_code = '{}({})'.format(name, val_code)
-
-        return val_code, namespace
-
-    @staticmethod
-    def _dump_field_code_item(field, field_name):
-        '''Get (code, namespace)-tuple for a customized dump_field function.
-
-        Args:
-            field: The field.
-
-            field_name: The name (key) of the field.
-
-        Returns: A tuple consisting of: a) Python code to define the function
-            and b) a namespace dict containing objects necessary for this code
-            to work.
-
-        '''
-        func_tpl = textwrap.dedent(
-            '''\
-            def dump_field(obj, many):
-                if many:
-                    return [{val_code} for obj in obj]
-                return {val_code}
-            '''
-        )
-        val_code, namespace = Schema._field_value_code_item(field,
-                                                            field_name, 0)
-        code = func_tpl.format(val_code=val_code)
-        return code, namespace
-
-    @staticmethod
-    def _dump_fields_code_item(fields, ordered):
-        '''Get (code, namespace)-tuple for a customized dump_fields function.
-
-        Args:
-            fields: An ordered mapping of field names to fields
-
-            ordered: If True, make the resulting function return OrderedDict
-                objects, else make it return ordinary dict objects
-
-        Returns: A tuple consisting of: a) Python code to define a dump
-            function for fields and b) a namespace dict containing objects
-            necessary for this code to work.
-
-        '''
-        # Namespace must contain OrderedDict if we want ordered output.
-        namespace = {'OrderedDict': OrderedDict} if ordered else {}
-
-        # Get correct templates depending on "ordered"
-        if ordered:
-            func_tpl = textwrap.dedent(
-                '''\
-                def dump_fields(obj, many):
-                    if many:
-                        return [OrderedDict([{contents}]) for obj in obj]
-                    return OrderedDict([{contents}])
-                '''
-            )
-            entry_tpl = '("{key}", {get_val})'
-        else:
-            func_tpl = textwrap.dedent(
-                '''\
-                def dump_fields(obj, many):
-                    if many:
-                        return [{{{contents}}} for obj in obj]
-                    return {{{contents}}}
-                '''
-            )
-            entry_tpl = '"{key}": {get_val}'
-
-        # one entry per field
-        entries = []
-
-        # iterate over fields to fill up entries
-        for field_num, (field_name, field) in enumerate(fields.items()):
-            val_code, val_namespace = Schema._field_value_code_item(
-                field, field_name, field_num
-            )
-            namespace.update(val_namespace)
-
-            # try to guard against code injection via quotes in key
-            key = str(field_name)
-            if '"' in key or "'" in key:
-                msg = 'Quotes are not allowed in field names: {}'
-                raise ValueError(msg.format(key))
-
-            # add entry
-            entries.append(entry_tpl.format(key=key, get_val=val_code))
-
-        code = func_tpl.format(contents=', '.join(entries))
-        return code, namespace
 
     def oid(self, obj, *, many=None):
         '''Return a marshalled representation of the oid for obj.

@@ -54,6 +54,40 @@ class TestHelperFunctions:
         assert mangle('hash__foo') == '#foo'
         assert mangle('plus__foo') == '+foo'
 
+    def test_dump_fields_code(self):
+        '''Test if _dump_fields_code_item gets a simple function right.'''
+        from textwrap import dedent
+
+        class TestSchema(schema.Schema):
+            foo = fields.String(attr='foo_attr')
+            bar = fields.String()
+
+        code, ns = schema._dump_fields_code_item(
+            TestSchema.__fields__, ordered=False
+        )
+        expected = dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [{"foo": obj.foo_attr, "bar": obj.bar} for obj in obj]
+                return {"foo": obj.foo_attr, "bar": obj.bar}
+            '''
+        )
+        assert code == expected
+
+        code, ns = schema._dump_fields_code_item(
+            TestSchema.__fields__, ordered=True
+        )
+        expected = dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)]) for obj in obj]
+                return OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)])
+            '''
+        )
+        assert code == expected
+
 
 class TestSchemaDefinition:
     '''Class collecting tests of Schema class definition.'''
@@ -663,37 +697,3 @@ class TestSchemaInstantiation:
 
         with pytest.raises(ValueError):
             test_schema = TestSchema()
-
-    def test_dump_fields_code(self):
-        '''Test if _dump_fields_code_item gets a simple function right.'''
-        from textwrap import dedent
-
-        class TestSchema(schema.Schema):
-            foo = fields.String(attr='foo_attr')
-            bar = fields.String()
-
-        code, ns = schema.Schema._dump_fields_code_item(
-            TestSchema.__fields__, ordered=False
-        )
-        expected = dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [{"foo": obj.foo_attr, "bar": obj.bar} for obj in obj]
-                return {"foo": obj.foo_attr, "bar": obj.bar}
-            '''
-        )
-        assert code == expected
-
-        code, ns = schema.Schema._dump_fields_code_item(
-            TestSchema.__fields__, ordered=True
-        )
-        expected = dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)]) for obj in obj]
-                return OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)])
-            '''
-        )
-        assert code == expected
