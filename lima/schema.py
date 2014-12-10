@@ -466,19 +466,19 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             with util.complain_about('only'):
                 fields = _fields_only(fields, util.vector_context(only))
 
-        self._fields = fields
-        self._ordered = ordered
-        self.many = many
-
-        # get code/namespace for dump function and create it
+        # add instance-specific dump function to self.
         code, namespace = _cns_dump_fields(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
-        # if oid field exists, get code/namespace for dump oid func & create it
+        # determine oid field (if one exists)
         if _contains_oid_field(fields):
             name, field = _oid_field_item(fields)
             code, namespace = _cns_dump_field(field, name)
             self._dump_oid = util.make_function('dump_field', code, namespace)
+
+        # add instance vars to self
+        self._fields = fields
+        self.many = many
 
     def dump_oid(self, obj, *, many=None):
         '''Return a marshalled representation of the oid of obj.
@@ -498,7 +498,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             AttributeError: if the schema doesn't have an oid field
 
         '''
-        # this just calls the instance-specific dump function
+        # call the instance-specific dump_oid function (or fail)
         return self._dump_oid(obj, self.many if many is None else many)
 
     def dump(self, obj, *, many=None):
@@ -519,5 +519,5 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             collection of objects was marshalled)
 
         '''
-        # this just calls the instance-specific dump function
+        # call the instance-specific dump function
         return self._dump_fields(obj, self.many if many is None else many)
