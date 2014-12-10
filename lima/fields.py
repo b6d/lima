@@ -18,15 +18,15 @@ class Field(abc.FieldABC):
 
         val: An optional constant value for the field.
 
-        oid: If ``True``, marks this field as a field whose value can be used
-            to identify an object. A schema must not end up with more than one
-            identifier field.
+        is_oid: If ``True``, marks this field as a field whose value can be
+            used to identify an object. A schema must not end up with more than
+            one identifier field.
 
     .. versionadded:: 0.3
         The ``val`` parameter.
 
     .. versionadded:: 0.4
-        The ``oid`` parameter.
+        The ``is_oid`` parameter.
 
     :attr:`attr`, :attr:`get` and :attr:`val` are mutually exclusive.
 
@@ -44,7 +44,7 @@ class Field(abc.FieldABC):
     instance.
 
     '''
-    def __init__(self, *, attr=None, get=None, val=None, oid=False):
+    def __init__(self, *, attr=None, get=None, val=None, is_oid=False):
         if sum(v is not None for v in (attr, get, val)) > 1:
             raise ValueError('attr, get and val are mutually exclusive.')
 
@@ -60,7 +60,7 @@ class Field(abc.FieldABC):
         elif val is not None:
             self.val = val
 
-        self.oid = oid
+        self.is_oid = is_oid
 
 
 class Boolean(Field):
@@ -309,17 +309,18 @@ class Reference(_LinkedObjectField):
 
     '''
     def pack(self, val):
-        '''Return the output of the linked object's schema's oid method.
+        '''Return the output of the linked object's schema's dump_oid method.
 
         Args:
             val: The nested object to convert.
 
         Returns:
             The output of the linked :class:`lima.schema.Schema`'s
-            :meth:`lima.schema.Schema.oid` method (or None if ``val`` is None).
+            :meth:`lima.schema.Schema.dump_oid` method (or None if ``val`` is
+            None).
 
         '''
-        return self.schema_inst.oid(val) if val is not None else None
+        return self.schema_inst.dump_oid(val) if val is not None else None
 
 
 Nested = Embed

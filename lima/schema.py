@@ -75,7 +75,7 @@ def _mangle_name(name):
 
 def _contains_oid_field(fields):
     '''Return True if any of fields claims to be an oid field, else False.'''
-    return any(f.oid for f in fields.values())
+    return any(f.is_oid for f in fields.values())
 
 
 def _oid_field_item(fields):
@@ -84,7 +84,7 @@ def _oid_field_item(fields):
     Raises:
         ValueError: if fields doesn't contain exactly one oid field.
     '''
-    names = [k for k, v in fields.items() if v.oid]
+    names = [k for k, v in fields.items() if v.is_oid]
     if len(names) != 1:
         raise ValueError('Not exactly one oid field.')
     name = names[0]
@@ -470,32 +470,36 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self._ordered = ordered
         self.many = many
 
-        # get code and namespace for customized dump function and create it
+        # get code/namespace for dump function and create it
         code, namespace = _cns_dump_fields(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
-        # if oid field exists, get code for customized oid func and create it
+        # if oid field exists, get code/namespace for dump oid func & create it
         if _contains_oid_field(fields):
             name, field = _oid_field_item(fields)
             code, namespace = _cns_dump_field(field, name)
-            self._oid = util.make_function('dump_field', code, namespace)
+            self._dump_oid = util.make_function('dump_field', code, namespace)
 
-    def oid(self, obj, *, many=None):
-        '''Return a marshalled representation of the oid for obj.
+    def dump_oid(self, obj, *, many=None):
+        '''Return a marshalled representation of the oid of obj.
 
         Args:
-            obj: The object (or collection of objects) to marshall.
+            obj: The object (or collection of objects) whose oid shall be
+                marshalled.
 
             many: Wether obj is a single object or a collection of objects. If
                 ``many`` is ``None``, the value of the instance's
                 :attr:`many` attribute is used.
 
         Returns:
-            TODO
+            The marshalled representation of the oid of obj
+
+        Raises:
+            AttributeError: if the schema doesn't have an oid field
 
         '''
-        # this more or less just calls the instance-specific dump function
-        return self._oid(obj, self.many if many is None else many)
+        # this just calls the instance-specific dump function
+        return self._dump_oid(obj, self.many if many is None else many)
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
@@ -515,5 +519,5 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             collection of objects was marshalled)
 
         '''
-        # this more or less just calls the instance-specific dump function
+        # this just calls the instance-specific dump function
         return self._dump_fields(obj, self.many if many is None else many)
