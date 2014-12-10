@@ -54,15 +54,15 @@ class TestHelperFunctions:
         assert mangle('hash__foo') == '#foo'
         assert mangle('plus__foo') == '+foo'
 
-    def test_dump_fields_code(self):
-        '''Test if _dump_fields_code_item gets a simple function right.'''
+    def test_cns_dump_fields(self):
+        '''Test if _cns_dump_fields gets a simple function right.'''
         from textwrap import dedent
 
         class TestSchema(schema.Schema):
             foo = fields.String(attr='foo_attr')
             bar = fields.String()
 
-        code, ns = schema._dump_fields_code_item(
+        code, ns = schema._cns_dump_fields(
             TestSchema.__fields__, ordered=False
         )
         expected = dedent(
@@ -75,7 +75,7 @@ class TestHelperFunctions:
         )
         assert code == expected
 
-        code, ns = schema._dump_fields_code_item(
+        code, ns = schema._cns_dump_fields(
             TestSchema.__fields__, ordered=True
         )
         expected = dedent(

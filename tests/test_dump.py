@@ -61,7 +61,7 @@ class KingSchemaEmbedObject(KnightSchema):
 class SelfReferentialKingSchema(schema.Schema):
     name = fields.String()
     boss = fields.Embed(schema=__name__ + '.SelfReferentialKingSchema',
-                         exclude='boss')
+                        exclude='boss')
 
 
 @pytest.fixture

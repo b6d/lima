@@ -91,20 +91,30 @@ def _oid_field_item(fields):
     return name, fields[name]
 
 
-def _field_value_code_item(field, field_name, field_num):
-    '''Get (code, namespace)-tuple to determine a field's serialized value.
+def _cns_field_value(field, field_name, field_num):
+    '''Return (code, namespace)-tuple for determining a field's serialized val.
 
     Args:
         field: A :class:`lima.fields.Field` instance.
 
         field_name: The name (key) of the field.
 
-        field_num: A schema-wide unique number for the field.
+        field_num: A schema-wide unique number for the field
 
     Returns:
         A tuple consisting of: a) a fragment of Python code to determine the
-        field's value and b) a namespace dict containing objects necessary for
-        this code fragment to work.
+        field's value for an object called ``obj`` and b) a namespace dict
+        containing the objects necessary for this code fragment to work.
+
+    For a field ``myfield`` that has a ``pack`` and a ``get`` callable defined,
+    the output of this function could look something like this:
+
+    .. code-block:: python
+
+        (
+            'pack3(get3(obj))',  # the code
+            {'get3': myfield.get, 'pack3': myfield.pack}  # the namespace
+        )
 
     '''
     namespace = {}
@@ -133,22 +143,22 @@ def _field_value_code_item(field, field_name, field_num):
             msg = 'Not a valid attribute name: {!r}'
             raise ValueError(msg.format(obj_attr))
 
-        # later, get value using obj_attr
+        # later, get value using this attr
         val_code = 'obj.{}'.format(obj_attr)
 
     if hasattr(field, 'pack'):
-        # add pack-shortcut to attributes
+        # add pack-shortcut to namespace
         name = 'pack{}'.format(field_num)
         namespace[name] = field.pack
 
-        # later, pass result field value to this shortcut
+        # later, pass field value to this shortcut
         val_code = '{}({})'.format(name, val_code)
 
     return val_code, namespace
 
 
-def _dump_field_code_item(field, field_name):
-    '''Get (code, namespace)-tuple for a customized dump_field function.
+def _cns_dump_field(field, field_name):
+    '''Return (code, namespace)-tuple for a customized dump_field function.
 
     Args:
         field: The field.
@@ -168,19 +178,19 @@ def _dump_field_code_item(field, field_name):
             return {val_code}
         '''
     )
-    val_code, namespace = _field_value_code_item(field, field_name, 0)
+    val_code, namespace = _cns_field_value(field, field_name, 0)
     code = func_tpl.format(val_code=val_code)
     return code, namespace
 
 
-def _dump_fields_code_item(fields, ordered):
-    '''Get (code, namespace)-tuple for a customized dump_fields function.
+def _cns_dump_fields(fields, ordered):
+    '''Return (code, namespace)-tuple for a customized dump_fields function.
 
     Args:
-        fields: An ordered mapping of field names to fields
+        fields: An ordered mapping of field names to fields.
 
         ordered: If True, make the resulting function return OrderedDict
-            objects, else make it return ordinary dict objects.
+            objects, else make it return ordinary dicts.
 
     Returns:
         A tuple consisting of: a) Python code to define a dump function for
@@ -197,30 +207,29 @@ def _dump_fields_code_item(fields, ordered):
             '''\
             def dump_fields(obj, many):
                 if many:
-                    return [OrderedDict([{contents}]) for obj in obj]
-                return OrderedDict([{contents}])
+                    return [OrderedDict([{joined_entries}]) for obj in obj]
+                return OrderedDict([{joined_entries}])
             '''
         )
-        entry_tpl = '("{key}", {get_val})'
+        entry_tpl = '("{key}", {val_code})'
     else:
         func_tpl = textwrap.dedent(
             '''\
             def dump_fields(obj, many):
                 if many:
-                    return [{{{contents}}} for obj in obj]
-                return {{{contents}}}
+                    return [{{{joined_entries}}} for obj in obj]
+                return {{{joined_entries}}}
             '''
         )
-        entry_tpl = '"{key}": {get_val}'
+        entry_tpl = '"{key}": {val_code}'
 
     # one entry per field
     entries = []
 
     # iterate over fields to fill up entries
     for field_num, (field_name, field) in enumerate(fields.items()):
-        val_code, val_namespace = _field_value_code_item(field, field_name,
-                                                         field_num)
-        namespace.update(val_namespace)
+        val_code, val_ns = _cns_field_value(field, field_name, field_num)
+        namespace.update(val_ns)
 
         # try to guard against code injection via quotes in key
         key = str(field_name)
@@ -229,9 +238,9 @@ def _dump_fields_code_item(fields, ordered):
             raise ValueError(msg.format(key))
 
         # add entry
-        entries.append(entry_tpl.format(key=key, get_val=val_code))
+        entries.append(entry_tpl.format(key=key, val_code=val_code))
 
-    code = func_tpl.format(contents=', '.join(entries))
+    code = func_tpl.format(joined_entries=', '.join(entries))
     return code, namespace
 
 
@@ -462,13 +471,13 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self.many = many
 
         # get code and namespace for customized dump function and create it
-        code, namespace = _dump_fields_code_item(fields, ordered)
+        code, namespace = _cns_dump_fields(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
         # if oid field exists, get code for customized oid func and create it
         if _contains_oid_field(fields):
             name, field = _oid_field_item(fields)
-            code, namespace = _dump_field_code_item(field, name)
+            code, namespace = _cns_dump_field(field, name)
             self._oid = util.make_function('dump_field', code, namespace)
 
     def oid(self, obj, *, many=None):
