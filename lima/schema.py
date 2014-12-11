@@ -139,32 +139,6 @@ def _cns_field_value(field, field_name, field_num):
     return val_code, namespace
 
 
-def _cns_dump_field(field, field_name):
-    '''Return (code, namespace)-tuple for a customized dump_field function.
-
-    Args:
-        field: The field.
-
-        field_name: The name (key) of the field.
-
-    Returns:
-        A tuple consisting of: a) Python code to define the function and b) a
-        namespace dict containing objects necessary for this code to work.
-
-    '''
-    func_tpl = textwrap.dedent(
-        '''\
-        def dump_field(obj, many):
-            if many:
-                return [{val_code} for obj in obj]
-            return {val_code}
-        '''
-    )
-    val_code, namespace = _cns_field_value(field, field_name, 0)
-    code = func_tpl.format(val_code=val_code)
-    return code, namespace
-
-
 def _cns_dump_fields(fields, ordered):
     '''Return (code, namespace)-tuple for a customized dump_fields function.
 

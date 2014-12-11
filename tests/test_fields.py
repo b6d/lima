@@ -21,7 +21,6 @@ SIMPLE_FIELDS = PASSTHROUGH_FIELDS + [
 
 LINKED_OBJECT_FIELDS = [
     fields._LinkedObjectField,
-    fields.Reference,
     fields.Embed,
     fields.Nested,  # to be deprecated in 0.5
 ]
