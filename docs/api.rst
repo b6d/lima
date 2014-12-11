@@ -41,19 +41,6 @@ lima.fields
         :annotation: =dict(...)
 
 
-.. _api_registry:
-
-lima.registry
-=============
-
-.. automodule:: lima.registry
-    :members:
-    :exclude-members: global_registry
-
-    .. autodata:: lima.registry.global_registry
-        :annotation: =lima.registry.Registry()
-
-
 .. _api_schema:
 
 lima.schema
@@ -61,12 +48,3 @@ lima.schema
 
 .. automodule:: lima.schema
     :members:
-
-
-.. _api_util:
-
-lima.util
-=========
-
-.. automodule:: lima.util
-   :members:

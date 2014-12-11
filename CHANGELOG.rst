@@ -9,6 +9,9 @@ Changelog
 
     While unreleased, the changelog of lima 0.4 is itself subject to change.
 
+- Don't create docs for internal modules any more - those did clutter up the
+  documentation of the actual API.
+
 - Implement lazy evaluation of some non-public schema and field attributes
   (`Pyramid <http://docs.pylonsproject.org/docs/pyramid/en/latest/api/
   decorator.html#pyramid.decorator.reify>`_ FTW). This means some things (like
