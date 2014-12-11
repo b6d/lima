@@ -69,7 +69,7 @@ Documentation
    first_steps
    schemas
    fields
-   nested_data
+   linked_data
    advanced
    api
    project_info

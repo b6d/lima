@@ -19,6 +19,12 @@ SIMPLE_FIELDS = PASSTHROUGH_FIELDS + [
     fields.DateTime
 ]
 
+LINKED_OBJECT_FIELDS = [
+    fields._LinkedObjectField,
+    fields.Embed,
+    fields.Nested,  # to be deprecated in 0.5
+]
+
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
 def test_simple_fields(cls):
@@ -106,14 +112,23 @@ def test_datetime_pack():
     assert fields.DateTime.pack(datetime) == expected
 
 
-# tests of nested fields assume a lot of the other stuff also works
+@pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+def test_linked_object_by_name(cls):
+    field = cls(schema='NonExistentSchemaName')
+    assert field._schema_name == 'NonExistentSchemaName'
 
-def test_nested_by_name():
-    field = fields.Nested(schema='NonExistentSchema')
-    assert field.schema_name == 'NonExistentSchema'
 
-
-def test_nested_error_on_illegal_schema_spec():
-
+@pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+def test_linked_object_error_on_illegal_schema_spec(cls):
     with pytest.raises(TypeError):
-        field = fields.Nested(schema=123)
+        field = cls(schema=123)
+
+
+def test_linked_object_field_pack_not_implemented():
+
+    class DummySchema(schema.Schema):
+        pass
+
+    field = fields._LinkedObjectField(schema=DummySchema())
+    with pytest.raises(NotImplementedError):
+        field.pack('foo')

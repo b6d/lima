@@ -73,6 +73,133 @@ def _mangle_name(name):
     return mapping[before] + after
 
 
+def _cns_field_value(field, field_name, field_num):
+    '''Return (code, namespace)-tuple for determining a field's serialized val.
+
+    Args:
+        field: A :class:`lima.fields.Field` instance.
+
+        field_name: The name (key) of the field.
+
+        field_num: A schema-wide unique number for the field
+
+    Returns:
+        A tuple consisting of: a) a fragment of Python code to determine the
+        field's value for an object called ``obj`` and b) a namespace dict
+        containing the objects necessary for this code fragment to work.
+
+    For a field ``myfield`` that has a ``pack`` and a ``get`` callable defined,
+    the output of this function could look something like this:
+
+    .. code-block:: python
+
+        (
+            'pack3(get3(obj))',  # the code
+            {'get3': myfield.get, 'pack3': myfield.pack}  # the namespace
+        )
+
+    '''
+    namespace = {}
+    if hasattr(field, 'val'):
+        # add constant-field-value-shortcut to namespace
+        name = 'val{}'.format(field_num)
+        namespace[name] = field.val
+
+        # later, get value using this shortcut
+        val_code = name
+
+    elif hasattr(field, 'get'):
+        # add getter-shortcut to namespace
+        name = 'get{}'.format(field_num)
+        namespace[name] = field.get
+
+        # later, get value by calling this shortcut
+        val_code = '{}(obj)'.format(name)
+
+    else:
+        # neither constant val nor getter: try to get value via attr
+        # (if attr is not specified, use field name as attr)
+        obj_attr = getattr(field, 'attr', field_name)
+
+        if not str.isidentifier(obj_attr) or keyword.iskeyword(obj_attr):
+            msg = 'Not a valid attribute name: {!r}'
+            raise ValueError(msg.format(obj_attr))
+
+        # later, get value using this attr
+        val_code = 'obj.{}'.format(obj_attr)
+
+    if hasattr(field, 'pack'):
+        # add pack-shortcut to namespace
+        name = 'pack{}'.format(field_num)
+        namespace[name] = field.pack
+
+        # later, pass field value to this shortcut
+        val_code = '{}({})'.format(name, val_code)
+
+    return val_code, namespace
+
+
+def _cns_dump_fields(fields, ordered):
+    '''Return (code, namespace)-tuple for a customized dump_fields function.
+
+    Args:
+        fields: An ordered mapping of field names to fields.
+
+        ordered: If True, make the resulting function return OrderedDict
+            objects, else make it return ordinary dicts.
+
+    Returns:
+        A tuple consisting of: a) Python code to define a dump function for
+        fields and b) a namespace dict containing objects necessary for this
+        code to work.
+
+    '''
+    # Namespace must contain OrderedDict if we want ordered output.
+    namespace = {'OrderedDict': OrderedDict} if ordered else {}
+
+    # Get correct templates depending on "ordered"
+    if ordered:
+        func_tpl = textwrap.dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [OrderedDict([{joined_entries}]) for obj in obj]
+                return OrderedDict([{joined_entries}])
+            '''
+        )
+        entry_tpl = '("{key}", {val_code})'
+    else:
+        func_tpl = textwrap.dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [{{{joined_entries}}} for obj in obj]
+                return {{{joined_entries}}}
+            '''
+        )
+        entry_tpl = '"{key}": {val_code}'
+
+    # one entry per field
+    entries = []
+
+    # iterate over fields to fill up entries
+    for field_num, (field_name, field) in enumerate(fields.items()):
+        val_code, val_ns = _cns_field_value(field, field_name, field_num)
+        namespace.update(val_ns)
+
+        # try to guard against code injection via quotes in key
+        key = str(field_name)
+        if '"' in key or "'" in key:
+            msg = 'Quotes are not allowed in field names: {}'
+            raise ValueError(msg.format(key))
+
+        # add entry
+        entries.append(entry_tpl.format(key=key, val_code=val_code))
+
+    code = func_tpl.format(joined_entries=', '.join(entries))
+    return code, namespace
+
+
 # Schema Metaclass ############################################################
 
 class SchemaMeta(type):
@@ -295,130 +422,13 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             with util.complain_about('only'):
                 fields = _fields_only(fields, util.vector_context(only))
 
-        self._fields = fields
-        self._ordered = ordered
-        self.many = many
-
-        # get code and namespace for customized dump function
-        code, namespace = Schema._dump_fields_code_ns(fields, ordered)
+        # add instance-specific dump function to self.
+        code, namespace = _cns_dump_fields(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
-    @staticmethod
-    def _field_value_code_ns(field, field_name, field_num):
-        '''Get code and namespace dict to determine a field's serialized value.
-
-        Args:
-            field: A :class:`lima.fields.Field` instance.
-
-            field_name: The name (key) of the field.
-
-            field_num: A schema-wide unique number for the field.
-
-        Returns: A tuple consisting of: a) a fragment of Python code to
-            determine the field's value and b) a namespace dict containing
-            objects necessary for this code fragment to work.
-
-        '''
-        namespace = {}
-        if hasattr(field, 'val'):
-            # add constant-field-value-shortcut to namespace
-            name = 'val{}'.format(field_num)
-            namespace[name] = field.val
-
-            # later, get value using this shortcut
-            val_code = name
-
-        elif hasattr(field, 'get'):
-            # add getter-shortcut to namespace
-            name = 'get{}'.format(field_num)
-            namespace[name] = field.get
-
-            # later, get value by calling this shortcut
-            val_code = '{}(obj)'.format(name)
-
-        else:
-            # neither constant val nor getter: try to get value via attr
-            # (if attr is not specified, use field name as attr)
-            obj_attr = getattr(field, 'attr', field_name)
-
-            if not str.isidentifier(obj_attr) or keyword.iskeyword(obj_attr):
-                msg = 'Not a valid attribute name: {!r}'
-                raise ValueError(msg.format(obj_attr))
-
-            # later, get value using obj_attr
-            val_code = 'obj.{}'.format(obj_attr)
-
-        if hasattr(field, 'pack'):
-            # add pack-shortcut to attributes
-            name = 'pack{}'.format(field_num)
-            namespace[name] = field.pack
-
-            # later, pass result field value to this shortcut
-            val_code = '{}({})'.format(name, val_code)
-
-        return val_code, namespace
-
-    @staticmethod
-    def _dump_fields_code_ns(fields, ordered):
-        '''Get code and namespace dict for a customized dump_fields function.
-
-        Args:
-            fields: An ordered mapping of field names to fields
-
-            ordered: If True, make the resulting function return OrderedDict
-                objects, else make it return ordinary dict objects
-
-        Returns: A tuple consisting of: a) Python code to define a dump
-            function for fields and b) a namespace dict containing objects
-            necessary for this code to work.
-
-        '''
-        # Namespace must contain OrderedDict if we want ordered output.
-        namespace = {'OrderedDict': OrderedDict} if ordered else {}
-
-        # Get correct templates depending on "ordered"
-        if ordered:
-            func_tpl = textwrap.dedent(
-                '''\
-                def dump_fields(obj, many):
-                    if many:
-                        return [OrderedDict([{contents}]) for obj in obj]
-                    return OrderedDict([{contents}])
-                '''
-            )
-            entry_tpl = '("{key}", {get_val})'
-        else:
-            func_tpl = textwrap.dedent(
-                '''\
-                def dump_fields(obj, many):
-                    if many:
-                        return [{{{contents}}} for obj in obj]
-                    return {{{contents}}}
-                '''
-            )
-            entry_tpl = '"{key}": {get_val}'
-
-        # one entry per field
-        entries = []
-
-        # iterate over fields to fill up entries
-        for field_num, (field_name, field) in enumerate(fields.items()):
-            val_code, val_namespace = Schema._field_value_code_ns(
-                field, field_name, field_num
-            )
-            namespace.update(val_namespace)
-
-            # try to guard against code injection via quotes in key
-            key = str(field_name)
-            if '"' in key or "'" in key:
-                msg = 'Quotes are not allowed in field names: {}'
-                raise ValueError(msg.format(key))
-
-            # add entry
-            entries.append(entry_tpl.format(key=key, get_val=val_code))
-
-        code = func_tpl.format(contents=', '.join(entries))
-        return code, namespace
+        # add instance vars to self
+        self._fields = fields
+        self.many = many
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
@@ -438,5 +448,5 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             collection of objects was marshalled)
 
         '''
-        # this more or less just calls the instance-specific dump function
+        # call the instance-specific dump function
         return self._dump_fields(obj, self.many if many is None else many)

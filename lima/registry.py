@@ -98,6 +98,6 @@ global_registry = Registry()
 '''A global :class:`Registry` instance.
 
 Used internally by lima to automatically keep track of created Schemas (this is
-needed by :class:`lima.fields.Nested`).
+needed by some field classes).
 
 '''

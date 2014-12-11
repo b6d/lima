@@ -209,7 +209,7 @@ Or we can change how already supported data types are marshalled:
 
     Also, don't try to override an existing instance method with a static
     method. Have a look at the source if in doubt (currently only
-    :class:`lima.fields.Nested` implements :meth:`pack` as an instance method.
+    :class:`lima.fields.Embed` implements :meth:`pack` as an instance method.
 
 
 .. _data_validation:
