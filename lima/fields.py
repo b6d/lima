@@ -164,12 +164,13 @@ class _LinkedObjectField(Field):
             Schemas defined within a local namespace can not be referenced by
             name.
 
-        attr: The optional name of the corresponding attribute.
+        attr: The optional name of the corresponding attribute containing the
+            linked object(s).
 
         get: An optional getter function accepting an object as its only
-            parameter and returning the field value.
+            parameter and returning the field value (the linked object).
 
-        val: An optional constant value for the field.
+        val: An optional constant value for the field (the linked object).
 
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
             constructor when the time has come to instance it. Must be empty if
@@ -230,8 +231,8 @@ class Embed(_LinkedObjectField):
     '''A Field to embed linked object(s).
 
     Args:
-        schema: The schema of the referenced object. This can be specified via
-            a schema *object,* a schema *class* (that will get instantiated
+        schema: The schema of the linked object. This can be specified via a
+            schema *object,* a schema *class* (that will get instantiated
             immediately) or the qualified *name* of a schema class (for when
             the named schema has not been defined at the time of the
             :class:`Embed` object's creation). If two or more schema classes
@@ -241,12 +242,13 @@ class Embed(_LinkedObjectField):
             Schemas defined within a local namespace can not be referenced by
             name.
 
-        attr: The optional name of the corresponding attribute.
+        attr: The optional name of the corresponding attribute containing the
+            linked object(s).
 
         get: An optional getter function accepting an object as its only
-            parameter and returning the field value.
+            parameter and returning the field value (the linked object).
 
-        val: An optional constant value for the field.
+        val: An optional constant value for the field (the linked object).
 
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
             constructor when the time has come to instance it. Must be empty if
