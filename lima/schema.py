@@ -73,24 +73,6 @@ def _mangle_name(name):
     return mapping[before] + after
 
 
-def _contains_oid_field(fields):
-    '''Return True if any of fields claims to be an oid field, else False.'''
-    return any(f.is_oid for f in fields.values())
-
-
-def _oid_field_item(fields):
-    '''Return (name, field)-tuple of the only oid field in fields.
-
-    Raises:
-        ValueError: if fields doesn't contain exactly one oid field.
-    '''
-    names = [k for k, v in fields.items() if v.is_oid]
-    if len(names) != 1:
-        raise ValueError('Not exactly one oid field.')
-    name = names[0]
-    return name, fields[name]
-
-
 def _cns_field_value(field, field_name, field_num):
     '''Return (code, namespace)-tuple for determining a field's serialized val.
 
@@ -470,36 +452,9 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         code, namespace = _cns_dump_fields(fields, ordered)
         self._dump_fields = util.make_function('dump_fields', code, namespace)
 
-        # determine oid field (if one exists)
-        if _contains_oid_field(fields):
-            name, field = _oid_field_item(fields)
-            code, namespace = _cns_dump_field(field, name)
-            self._dump_oid = util.make_function('dump_field', code, namespace)
-
         # add instance vars to self
         self._fields = fields
         self.many = many
-
-    def dump_oid(self, obj, *, many=None):
-        '''Return a marshalled representation of the oid of obj.
-
-        Args:
-            obj: The object (or collection of objects) whose oid shall be
-                marshalled.
-
-            many: Wether obj is a single object or a collection of objects. If
-                ``many`` is ``None``, the value of the instance's
-                :attr:`many` attribute is used.
-
-        Returns:
-            The marshalled representation of the oid of obj
-
-        Raises:
-            AttributeError: if the schema doesn't have an oid field
-
-        '''
-        # call the instance-specific dump_oid function (or fail)
-        return self._dump_oid(obj, self.many if many is None else many)
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
