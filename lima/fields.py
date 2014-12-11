@@ -202,7 +202,7 @@ class _LinkedObjectField(Field):
 
     @reify
     def schema_inst(self):
-        '''Return the associated Schema instance (reified method).
+        '''Return the associated Schema instance (reified).
 
         If no associated Schema instance exists at call time (because only a
         Schema class name was supplied to the constructor), find the Schema

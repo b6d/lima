@@ -422,13 +422,16 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             with util.complain_about('only'):
                 fields = _fields_only(fields, util.vector_context(only))
 
-        # add instance-specific dump function to self.
-        code, namespace = _cns_dump_fields(fields, ordered)
-        self._dump_fields = util.make_function('dump_fields', code, namespace)
-
         # add instance vars to self
         self._fields = fields
+        self._ordered = ordered
         self.many = many
+
+    @util.reify
+    def _dump_function(self):
+        '''Return instance-specific dump function (reified).'''
+        code, namespace = _cns_dump_fields(self._fields, self._ordered)
+        return util.make_function('dump_fields', code, namespace)
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
@@ -449,4 +452,4 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         '''
         # call the instance-specific dump function
-        return self._dump_fields(obj, self.many if many is None else many)
+        return self._dump_function(obj, self.many if many is None else many)
