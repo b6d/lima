@@ -189,7 +189,7 @@ class _LinkedObjectField(Field):
         # in case schema is a Schema object
         if isinstance(schema, abc.SchemaABC):
             if kwargs:
-                msg = ('No keyword args must be supplied'
+                msg = ('No keyword args must be supplied '
                        'if schema is a Schema object.')
                 raise ValueError(msg)
             self._schema_inst = schema
