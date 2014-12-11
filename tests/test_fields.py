@@ -123,3 +123,13 @@ def test_linked_object_by_name(cls):
 def test_linked_object_error_on_illegal_schema_spec(cls):
     with pytest.raises(TypeError):
         field = cls(schema=123)
+
+
+def test_linked_object_field_pack_not_implemented():
+
+    class DummySchema(schema.Schema):
+        pass
+
+    field = fields._LinkedObjectField(schema=DummySchema())
+    with pytest.raises(NotImplementedError):
+        field.pack('foo')
