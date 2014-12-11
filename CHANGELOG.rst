@@ -9,6 +9,13 @@ Changelog
 
     While unreleased, the changelog of lima 0.4 is itself subject to change.
 
+- Implement lazy evaluation of some non-public schema and field attributes
+  (`Pyramid <http://docs.pylonsproject.org/docs/pyramid/en/latest/api/
+  decorator.html#pyramid.decorator.reify>`_ FTW). This means some things (like
+  custom dump functions for schema instances) are only evaluated if really
+  needed, but it also means that some errors might surface at a later time
+  (lima mentions this when raising such exceptions).
+
 - Small speed improvement when serializing collections.
 
 - Deprecate ``fields.Nested`` in favour of ``fields.Embed``.
