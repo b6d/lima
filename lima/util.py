@@ -189,7 +189,7 @@ def ensure_only_instances_of(collection, cls):
         raise TypeError('No instances of {}: {!r}'.format(cls, found))
 
 
-def make_function(name, code, globals_=None):
+def _make_function(name, code, globals_=None):
     '''Return a function created by executing a code string in a new namespace.
 
     This is not much more than a wrapper around :func:`exec`.
@@ -281,8 +281,8 @@ def _cns_field_value(field, field_name, field_num):
     return val_code, namespace
 
 
-def _cns_dump_field(field, field_name):
-    '''Return (code, namespace)-tuple for a customized dump_field function.
+def dump_field_function(field, field_name):
+    '''Return a customized dump_field function.
 
     Args:
         field: The field.
@@ -290,8 +290,7 @@ def _cns_dump_field(field, field_name):
         field_name: The name (key) of the field.
 
     Returns:
-        A tuple consisting of: a) Python code to define the function and b) a
-        namespace dict containing objects necessary for this code to work.
+        A custom dump_field function.
 
     '''
     func_tpl = dedent(
@@ -304,11 +303,16 @@ def _cns_dump_field(field, field_name):
     )
     val_code, namespace = _cns_field_value(field, field_name, 0)
     code = func_tpl.format(val_code=val_code)
-    return code, namespace
+
+    # assemble function code
+    code = func_tpl.format(joined_entries=', '.join(entries))
+
+    # finally create and return function
+    return _make_function('dump_field', code, namespace)
 
 
-def _cns_dump_fields(fields, ordered):
-    '''Return (code, namespace)-tuple for a customized dump_fields function.
+def dump_fields_function(fields, ordered):
+    '''Return a customized dump_fields function.
 
     Args:
         fields: An ordered mapping of field names to fields.
@@ -317,9 +321,7 @@ def _cns_dump_fields(fields, ordered):
             objects, else make it return ordinary dicts.
 
     Returns:
-        A tuple consisting of: a) Python code to define a dump function for
-        fields and b) a namespace dict containing objects necessary for this
-        code to work.
+        A custom dump_fields function.
 
     '''
     # Namespace must contain OrderedDict if we want ordered output.
@@ -364,5 +366,9 @@ def _cns_dump_fields(fields, ordered):
         # add entry
         entries.append(entry_tpl.format(key=key, val_code=val_code))
 
+    # assemble function code
     code = func_tpl.format(joined_entries=', '.join(entries))
-    return code, namespace
+
+    # finally create and return function
+    return _make_function('dump_fields', code, namespace)
+

@@ -303,10 +303,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     @util.reify
     def _dump_function(self):
         '''Return instance-specific dump function (reified).'''
-        with util.complain_about('Lazy evaluation of dump function'):
-            code, namespace = util._cns_dump_fields(self._fields,
-                                                    self._ordered)
-            return util.make_function('dump_fields', code, namespace)
+        with util.complain_about('Lazy creation of dump function'):
+            return util.dump_fields_function(self._fields, self._ordered)
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.

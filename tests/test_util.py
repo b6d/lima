@@ -160,7 +160,7 @@ def test_only_instances_of():
 
 def test_make_function():
     code = 'def func_in_namespace(): return 1'
-    my_function = util.make_function('func_in_namespace', code)
+    my_function = util._make_function('func_in_namespace', code)
     assert(callable(my_function))
     assert(my_function() == 1)
     # make sure the new name didn't leak out into globals/locals
@@ -169,47 +169,9 @@ def test_make_function():
 
     code = 'def func_in_namespace(): return a'
     namespace = dict(a=42)
-    my_function = util.make_function('func_in_namespace', code, namespace)
+    my_function = util._make_function('func_in_namespace', code, namespace)
     assert(callable(my_function))
     assert(my_function() == 42)
     # make sure the new name didn't leak out of namespace
     with pytest.raises(NameError):
         func_in_namespace
-
-
-class TestCodeGenerationFunctions:
-    '''Class collecting tests of helper functions.'''
-
-    def test_cns_dump_fields(self):
-        '''Test if _cns_dump_fields gets a simple function right.'''
-        from textwrap import dedent
-
-        class TestSchema(schema.Schema):
-            foo = fields.String(attr='foo_attr')
-            bar = fields.String()
-
-        code, ns = util._cns_dump_fields(
-            TestSchema.__fields__, ordered=False
-        )
-        expected = dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [{"foo": obj.foo_attr, "bar": obj.bar} for obj in obj]
-                return {"foo": obj.foo_attr, "bar": obj.bar}
-            '''
-        )
-        assert code == expected
-
-        code, ns = util._cns_dump_fields(
-            TestSchema.__fields__, ordered=True
-        )
-        expected = dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)]) for obj in obj]
-                return OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)])
-            '''
-        )
-        assert code == expected
