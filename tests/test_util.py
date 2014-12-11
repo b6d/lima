@@ -3,6 +3,8 @@ from collections import OrderedDict
 
 import pytest
 
+from lima import fields
+from lima import schema
 from lima import util
 
 
@@ -173,3 +175,41 @@ def test_make_function():
     # make sure the new name didn't leak out of namespace
     with pytest.raises(NameError):
         func_in_namespace
+
+
+class TestCodeGenerationFunctions:
+    '''Class collecting tests of helper functions.'''
+
+    def test_cns_dump_fields(self):
+        '''Test if _cns_dump_fields gets a simple function right.'''
+        from textwrap import dedent
+
+        class TestSchema(schema.Schema):
+            foo = fields.String(attr='foo_attr')
+            bar = fields.String()
+
+        code, ns = util._cns_dump_fields(
+            TestSchema.__fields__, ordered=False
+        )
+        expected = dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [{"foo": obj.foo_attr, "bar": obj.bar} for obj in obj]
+                return {"foo": obj.foo_attr, "bar": obj.bar}
+            '''
+        )
+        assert code == expected
+
+        code, ns = util._cns_dump_fields(
+            TestSchema.__fields__, ordered=True
+        )
+        expected = dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)]) for obj in obj]
+                return OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)])
+            '''
+        )
+        assert code == expected
