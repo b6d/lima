@@ -302,10 +302,9 @@ def dump_field_function(field, field_name):
         '''
     )
     val_code, namespace = _cns_field_value(field, field_name, 0)
-    code = func_tpl.format(val_code=val_code)
 
     # assemble function code
-    code = func_tpl.format(joined_entries=', '.join(entries))
+    code = func_tpl.format(val_code=val_code)
 
     # finally create and return function
     return _make_function('dump_field', code, namespace)
