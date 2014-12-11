@@ -45,14 +45,14 @@ class reify:
 
     And usage of Foo:
 
-    f = Foo()
-    v = f.jammy
+    >>> f = Foo()
+    >>> v = f.jammy
     'jammy called'
-    print(v)
+    >>> print(v)
     1
-    print f.jammy
+    >>> f.jammy
     1
-    # jammy func not called the second time; it replaced itself with 1
+    >>> # jammy func not called the second time; it replaced itself with 1
 
     Taken from pyramid.decorator (see source for license info).
 
