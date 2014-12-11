@@ -35,7 +35,9 @@ The lima sources include a copy of the  `Read the Docs Sphinx Theme
 The author believes to have benefited a lot from looking at the documentation
 and source code of other awesome projects, among them
 `django <https://www.djangoproject.com>`_,
-`morepath <https://morepath.readthedocs.org>`_ and
+`morepath <https://morepath.readthedocs.org>`_,
+`Pyramid <http://www.pylonsproject.org>`_
+(:class:`lima.util.reify` was taken from there) and
 `SQLAlchemy <http://www.sqlalchemy.org>`_ as well as the Python standard
 library itself. (Seriously, look in there!)
 
