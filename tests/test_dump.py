@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 import pytest
 
-from lima import fields, schema, registry
+from lima import fields, schema
 
 
 class Person:
@@ -182,10 +182,13 @@ def test_dump_embed_schema_instance_double_kwargs_error(king, knights):
 
     embed_schema = KnightSchema(many=True)
 
+    class KingSchema(KnightSchema):
+        title = fields.String()
+        # here we provide a schema instance. the kwarg "many" is unnecessary
+        subjects = fields.Embed(schema=embed_schema, many=True)
+
     with pytest.raises(ValueError):
-        class KingSchema(KnightSchema):
-            title = fields.String()
-            subjects = fields.Embed(schema=embed_schema, many=True)
+        KingSchema.__fields__['subjects']._schema_inst
 
 
 def test_dump_embed_schema_self(king):
