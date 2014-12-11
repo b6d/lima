@@ -4,7 +4,7 @@ import datetime as dt
 
 import pytest
 
-from lima import abc, fields, schema
+from lima import abc, exc, fields, schema
 
 
 PASSTHROUGH_FIELDS = [
@@ -112,23 +112,59 @@ def test_datetime_pack():
     assert fields.DateTime.pack(datetime) == expected
 
 
-@pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-def test_linked_object_by_name(cls):
-    field = cls(schema='NonExistentSchemaName')
-    assert field._schema_name == 'NonExistentSchemaName'
+class TestLinkedObjectFields:
 
+    class LinkedSchema(schema.Schema):
+        foo = fields.Integer()
+        bar = fields.String()
 
-@pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-def test_linked_object_error_on_illegal_schema_spec(cls):
-    with pytest.raises(TypeError):
-        field = cls(schema=123)
+    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+    def test_linked_object_by_schema_inst(self, cls):
+        schema_inst = self.LinkedSchema(many=True)
+        field = cls(schema=schema_inst)
+        assert field._schema_arg is schema_inst
+        assert field._schema_inst is schema_inst
+        assert field._schema_inst.many == True
 
+    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+    def test_linked_object_by_schema_class(self, cls):
+        schema_cls = self.LinkedSchema
+        field = cls(schema=schema_cls, many=True)
+        assert field._schema_arg is schema_cls
+        assert isinstance(field._schema_inst, schema_cls)
+        assert field._schema_inst.many == True
 
-def test_linked_object_field_pack_not_implemented():
+    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+    def test_linked_object_by_schema_name(self, cls):
+        schema_name = self.__class__.__qualname__ + '.LinkedSchema'
+        field = cls(schema=schema_name, many=True)
+        assert field._schema_arg is schema_name
+        assert isinstance(field._schema_inst, self.LinkedSchema)
+        assert field._schema_inst.many == True
 
-    class DummySchema(schema.Schema):
-        pass
+    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+    def test_linked_object_fail_on_unnecessary_kwargs(self, cls):
+        schema_inst = self.LinkedSchema()
+        # here we supply a kwarg, even though schema is already instantiated
+        field = cls(schema=schema_inst, many=True)
+        with pytest.raises(ValueError):
+            field._schema_inst  # this will complain about our earlier error
 
-    field = fields._LinkedObjectField(schema=DummySchema())
-    with pytest.raises(NotImplementedError):
-        field.pack('foo')
+    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+    def test_linked_object_fail_on_nonexistent_class(self, cls):
+        # here we supply a nonexistent schema name
+        field = cls(schema='NonExistentSchemaName')
+        with pytest.raises(exc.ClassNotFoundError):
+            field._schema_inst  # this will complain about our earlier error
+
+    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
+    def test_linked_object_fail_on_illegal_schema_arg(self, cls):
+        # here we supply a wrong schema arg
+        field = cls(schema=0xbad1dea)
+        with pytest.raises(TypeError):
+            field._schema_inst  # this will complain about our earlier error
+
+    def test_linked_object_field_pack_not_implemented(self):
+        field = fields._LinkedObjectField(schema='ThisDoesntEvenHaveToExist')
+        with pytest.raises(NotImplementedError):
+            field.pack('foo')
