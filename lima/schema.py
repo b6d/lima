@@ -479,6 +479,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 fields = _fields_only(fields, util.vector_context(only))
 
         # add instance vars to self
+        self._dump_field_functions = {}
         self._fields = fields
         self._ordered = ordered
         self.many = many
@@ -488,6 +489,16 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         '''Return instance-specific dump function (reified).'''
         with util.complain_about('Lazy creation of dump function'):
             return _dump_fields_function(self._fields, self._ordered)
+
+    def _dump_field_function(self, field_name):
+        '''Return instance-specific dump function for a single field.'''
+        if field_name in self._dump_field_functions:
+            return self._dump_field_functions[field_name]
+
+        with util.complain_about('Lazy creation of dump function for field'):
+            f = _dump_field_function(self._fields[field_name], field_name)
+            self._dump_field_functions[field_name] = f
+            return f
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
