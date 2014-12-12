@@ -7,10 +7,8 @@
     any time without deprecation notice or upgrade path.
 
 '''
-from collections import abc, OrderedDict
+from collections import abc
 from contextlib import contextmanager
-from keyword import iskeyword
-from textwrap import dedent
 
 
 @contextmanager
