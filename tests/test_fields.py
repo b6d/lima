@@ -19,6 +19,7 @@ SIMPLE_FIELDS = PASSTHROUGH_FIELDS + [
     fields.DateTime
 ]
 
+
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
 def test_simple_fields(cls):
     '''Test creation of simple fields.'''
@@ -116,21 +117,21 @@ class TestLinkedObjectField:
         field = fields._LinkedObjectField(schema=schema_inst)
         assert field._schema_arg is schema_inst
         assert field._schema_inst is schema_inst
-        assert field._schema_inst.many == True
+        assert field._schema_inst.many is True
 
     def test_linked_object_by_schema_class(self):
         schema_cls = self.LinkedSchema
         field = fields._LinkedObjectField(schema=schema_cls, many=True)
         assert field._schema_arg is schema_cls
         assert isinstance(field._schema_inst, schema_cls)
-        assert field._schema_inst.many == True
+        assert field._schema_inst.many is True
 
     def test_linked_object_by_schema_name(self):
         schema_name = self.__class__.__qualname__ + '.LinkedSchema'
         field = fields._LinkedObjectField(schema=schema_name, many=True)
         assert field._schema_arg is schema_name
         assert isinstance(field._schema_inst, self.LinkedSchema)
-        assert field._schema_inst.many == True
+        assert field._schema_inst.many is True
 
     def test_linked_object_fail_on_unnecessary_kwargs(self):
         schema_inst = self.LinkedSchema()

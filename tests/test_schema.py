@@ -65,7 +65,8 @@ class TestHelperFunctions:
 
         code = 'def func_in_namespace(): return a'
         namespace = dict(a=42)
-        my_function = schema._make_function('func_in_namespace', code, namespace)
+        my_function = schema._make_function('func_in_namespace',
+                                            code, namespace)
         assert(callable(my_function))
         assert(my_function() == 42)
         # make sure the new name didn't leak out of namespace
