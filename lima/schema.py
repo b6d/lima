@@ -409,7 +409,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         ordered: An optional boolean indicating if the :meth:`Schema.dump`
             method should output :class:`collections.OrderedDict` objects
-            instead of simple :class:`dict` objects.  Defaults to ``False``.
+            instead of simple :class:`dict` objects. Defaults to ``False``.
             This does not influence how nested fields are serialized.
 
         many: An optional boolean indicating if the new Schema will be
