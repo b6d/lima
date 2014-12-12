@@ -1,7 +1,7 @@
 '''Schema class and related code.'''
-import keyword
-import textwrap
 from collections import OrderedDict
+from keyword import iskeyword
+from textwrap import dedent
 
 from lima import abc
 from lima import exc
@@ -71,6 +71,189 @@ def _mangle_name(name):
     if before not in mapping:
         return name
     return mapping[before] + after
+
+
+def _make_function(name, code, globals_=None):
+    '''Return a function created by executing a code string in a new namespace.
+
+    This is not much more than a wrapper around :func:`exec`.
+
+    Args:
+        name: The name of the function to create. Must match the function name
+            in ``code``.
+
+        code: A String containing the function definition code. The name of the
+            function must match ``name``.
+
+        globals_: A dict of globals to mix into the new function's namespace.
+            ``__builtins__`` must be provided explicitly if required.
+
+    .. warning:
+
+        All pitfalls of using :func:`exec` apply to this function as well.
+
+    '''
+    namespace = dict(__builtins__={})
+    if globals_:
+        namespace.update(globals_)
+    exec(code, namespace)
+    return namespace[name]
+
+
+def _cns_field_value(field, field_name, field_num):
+    '''Return (code, namespace)-tuple for determining a field's serialized val.
+
+    Args:
+        field: A :class:`lima.fields.Field` instance.
+
+        field_name: The name (key) of the field.
+
+        field_num: A schema-wide unique number for the field
+
+    Returns:
+        A tuple consisting of: a) a fragment of Python code to determine the
+        field's value for an object called ``obj`` and b) a namespace dict
+        containing the objects necessary for this code fragment to work.
+
+    For a field ``myfield`` that has a ``pack`` and a ``get`` callable defined,
+    the output of this function could look something like this:
+
+    .. code-block:: python
+
+        (
+            'pack3(get3(obj))',  # the code
+            {'get3': myfield.get, 'pack3': myfield.pack}  # the namespace
+        )
+    '''
+    namespace = {}
+    if hasattr(field, 'val'):
+        # add constant-field-value-shortcut to namespace
+        name = 'val{}'.format(field_num)
+        namespace[name] = field.val
+
+        # later, get value using this shortcut
+        val_code = name
+
+    elif hasattr(field, 'get'):
+        # add getter-shortcut to namespace
+        name = 'get{}'.format(field_num)
+        namespace[name] = field.get
+
+        # later, get value by calling this shortcut
+        val_code = '{}(obj)'.format(name)
+
+    else:
+        # neither constant val nor getter: try to get value via attr
+        # (if attr is not specified, use field name as attr)
+        obj_attr = getattr(field, 'attr', field_name)
+
+        if not str.isidentifier(obj_attr) or iskeyword(obj_attr):
+            msg = 'Not a valid attribute name: {!r}'
+            raise ValueError(msg.format(obj_attr))
+
+        # later, get value using this attr
+        val_code = 'obj.{}'.format(obj_attr)
+
+    if hasattr(field, 'pack'):
+        # add pack-shortcut to namespace
+        name = 'pack{}'.format(field_num)
+        namespace[name] = field.pack
+
+        # later, pass field value to this shortcut
+        val_code = '{}({})'.format(name, val_code)
+
+    return val_code, namespace
+
+
+def _dump_field_function(field, field_name):
+    '''Return a customized dump_field function.
+
+    Args:
+        field: The field.
+
+        field_name: The name (key) of the field.
+
+    Returns:
+        A custom dump_field function.
+
+    '''
+    func_tpl = dedent(
+        '''\
+        def dump_field(obj, many):
+            if many:
+                return [{val_code} for obj in obj]
+            return {val_code}
+        '''
+    )
+    val_code, namespace = _cns_field_value(field, field_name, 0)
+
+    # assemble function code
+    code = func_tpl.format(val_code=val_code)
+
+    # finally create and return function
+    return _make_function('dump_field', code, namespace)
+
+
+def _dump_fields_function(fields, ordered):
+    '''Return a customized dump_fields function.
+
+    Args:
+        fields: An ordered mapping of field names to fields.
+
+        ordered: If True, make the resulting function return OrderedDict
+            objects, else make it return ordinary dicts.
+
+    Returns:
+        A custom dump_fields function.
+
+    '''
+    # Namespace must contain OrderedDict if we want ordered output.
+    namespace = {'OrderedDict': OrderedDict} if ordered else {}
+
+    # Get correct templates depending on "ordered"
+    if ordered:
+        func_tpl = dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [OrderedDict([{joined_entries}]) for obj in obj]
+                return OrderedDict([{joined_entries}])
+            '''
+        )
+        entry_tpl = '("{key}", {val_code})'
+    else:
+        func_tpl = dedent(
+            '''\
+            def dump_fields(obj, many):
+                if many:
+                    return [{{{joined_entries}}} for obj in obj]
+                return {{{joined_entries}}}
+            '''
+        )
+        entry_tpl = '"{key}": {val_code}'
+
+    # one entry per field
+    entries = []
+
+    # iterate over fields to fill up entries
+    for field_num, (field_name, field) in enumerate(fields.items()):
+        val_code, val_ns = _cns_field_value(field, field_name, field_num)
+        namespace.update(val_ns)
+
+        # try to guard against code injection via quotes in key
+        key = str(field_name)
+        if '"' in key or "'" in key:
+            msg = 'Quotes are not allowed in field names: {}'
+            raise ValueError(msg.format(key))
+
+        # add entry
+        entries.append(entry_tpl.format(key=key, val_code=val_code))
+
+    # assemble function code
+    code = func_tpl.format(joined_entries=', '.join(entries))
+
+    # finally create and return function
+    return _make_function('dump_fields', code, namespace)
 
 
 # Schema Metaclass ############################################################
@@ -304,7 +487,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     def _dump_function(self):
         '''Return instance-specific dump function (reified).'''
         with util.complain_about('Lazy creation of dump function'):
-            return util.dump_fields_function(self._fields, self._ordered)
+            return _dump_fields_function(self._fields, self._ordered)
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.
