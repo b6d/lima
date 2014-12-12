@@ -313,8 +313,29 @@ class Reference(_LinkedObjectField):
     Constructor arguments are similar to those of :class:`Embed`.
 
     '''
+    def __init__(self,
+                 *,
+                 schema,
+                 field_name,
+                 attr=None,
+                 get=None,
+                 val=None,
+                 **kwargs):
+        super().__init__(schema=schema, attr=attr, get=get, val=val, **kwargs)
+        self._field_name = field_name
+
+    @util.reify
+    def _dump_field_function(self):
+        return self._schema_inst._dump_field_function(self._field_name)
+
+    @util.reify
+    def _many(self):
+        return self._schema_inst.many
+
     def pack(self, val):
-        raise NotImplementedError
+        if val is None:
+            return None
+        return self._dump_field_function(val, self._many)
 
 
 Nested = Embed
