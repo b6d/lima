@@ -482,7 +482,17 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         self._dump_field_functions = {}
         self._fields = fields
         self._ordered = ordered
-        self.many = many
+        self._many = many
+
+    @property
+    def many(self):
+        '''Read-only property: does schema dump collections by default?'''
+        return self._many
+
+    @property
+    def ordered(self):
+        '''Read-only property: does schema dump ordered dicts?'''
+        return self._ordered
 
     @util.reify
     def _dump_function(self):
