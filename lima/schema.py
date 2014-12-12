@@ -1,7 +1,7 @@
 '''Schema class and related code.'''
+import keyword
+import textwrap
 from collections import OrderedDict
-from keyword import iskeyword
-from textwrap import dedent
 
 from lima import abc
 from lima import exc
@@ -147,7 +147,7 @@ def _cns_field_value(field, field_name, field_num):
         # (if attr is not specified, use field name as attr)
         obj_attr = getattr(field, 'attr', field_name)
 
-        if not str.isidentifier(obj_attr) or iskeyword(obj_attr):
+        if not str.isidentifier(obj_attr) or keyword.iskeyword(obj_attr):
             msg = 'Not a valid attribute name: {!r}'
             raise ValueError(msg.format(obj_attr))
 
@@ -177,7 +177,7 @@ def _dump_field_function(field, field_name):
         A custom dump_field function.
 
     '''
-    func_tpl = dedent(
+    func_tpl = textwrap.dedent(
         '''\
         def dump_field(obj, many):
             if many:
@@ -212,7 +212,7 @@ def _dump_fields_function(fields, ordered):
 
     # Get correct templates depending on "ordered"
     if ordered:
-        func_tpl = dedent(
+        func_tpl = textwrap.dedent(
             '''\
             def dump_fields(obj, many):
                 if many:
@@ -222,7 +222,7 @@ def _dump_fields_function(fields, ordered):
         )
         entry_tpl = '("{key}", {val_code})'
     else:
-        func_tpl = dedent(
+        func_tpl = textwrap.dedent(
             '''\
             def dump_fields(obj, many):
                 if many:
