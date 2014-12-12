@@ -3,6 +3,8 @@ from collections import OrderedDict
 
 import pytest
 
+from lima import fields
+from lima import schema
 from lima import util
 
 
@@ -154,22 +156,3 @@ def test_only_instances_of():
 
     with pytest.raises(TypeError):
         util.ensure_only_instances_of([1, 2, 3.3, 4], int)
-
-
-def test_make_function():
-    code = 'def func_in_namespace(): return 1'
-    my_function = util.make_function('func_in_namespace', code)
-    assert(callable(my_function))
-    assert(my_function() == 1)
-    # make sure the new name didn't leak out into globals/locals
-    with pytest.raises(NameError):
-        func_in_namespace
-
-    code = 'def func_in_namespace(): return a'
-    namespace = dict(a=42)
-    my_function = util.make_function('func_in_namespace', code, namespace)
-    assert(callable(my_function))
-    assert(my_function() == 42)
-    # make sure the new name didn't leak out of namespace
-    with pytest.raises(NameError):
-        func_in_namespace

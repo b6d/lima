@@ -73,6 +73,33 @@ def _mangle_name(name):
     return mapping[before] + after
 
 
+def _make_function(name, code, globals_=None):
+    '''Return a function created by executing a code string in a new namespace.
+
+    This is not much more than a wrapper around :func:`exec`.
+
+    Args:
+        name: The name of the function to create. Must match the function name
+            in ``code``.
+
+        code: A String containing the function definition code. The name of the
+            function must match ``name``.
+
+        globals_: A dict of globals to mix into the new function's namespace.
+            ``__builtins__`` must be provided explicitly if required.
+
+    .. warning:
+
+        All pitfalls of using :func:`exec` apply to this function as well.
+
+    '''
+    namespace = dict(__builtins__={})
+    if globals_:
+        namespace.update(globals_)
+    exec(code, namespace)
+    return namespace[name]
+
+
 def _cns_field_value(field, field_name, field_num):
     '''Return (code, namespace)-tuple for determining a field's serialized val.
 
@@ -97,7 +124,6 @@ def _cns_field_value(field, field_name, field_num):
             'pack3(get3(obj))',  # the code
             {'get3': myfield.get, 'pack3': myfield.pack}  # the namespace
         )
-
     '''
     namespace = {}
     if hasattr(field, 'val'):
@@ -139,8 +165,37 @@ def _cns_field_value(field, field_name, field_num):
     return val_code, namespace
 
 
-def _cns_dump_fields(fields, ordered):
-    '''Return (code, namespace)-tuple for a customized dump_fields function.
+def _dump_field_function(field, field_name):
+    '''Return a customized dump_field function.
+
+    Args:
+        field: The field.
+
+        field_name: The name (key) of the field.
+
+    Returns:
+        A custom dump_field function.
+
+    '''
+    func_tpl = textwrap.dedent(
+        '''\
+        def dump_field(obj, many):
+            if many:
+                return [{val_code} for obj in obj]
+            return {val_code}
+        '''
+    )
+    val_code, namespace = _cns_field_value(field, field_name, 0)
+
+    # assemble function code
+    code = func_tpl.format(val_code=val_code)
+
+    # finally create and return function
+    return _make_function('dump_field', code, namespace)
+
+
+def _dump_fields_function(fields, ordered):
+    '''Return a customized dump_fields function.
 
     Args:
         fields: An ordered mapping of field names to fields.
@@ -149,9 +204,7 @@ def _cns_dump_fields(fields, ordered):
             objects, else make it return ordinary dicts.
 
     Returns:
-        A tuple consisting of: a) Python code to define a dump function for
-        fields and b) a namespace dict containing objects necessary for this
-        code to work.
+        A custom dump_fields function.
 
     '''
     # Namespace must contain OrderedDict if we want ordered output.
@@ -196,8 +249,11 @@ def _cns_dump_fields(fields, ordered):
         # add entry
         entries.append(entry_tpl.format(key=key, val_code=val_code))
 
+    # assemble function code
     code = func_tpl.format(joined_entries=', '.join(entries))
-    return code, namespace
+
+    # finally create and return function
+    return _make_function('dump_fields', code, namespace)
 
 
 # Schema Metaclass ############################################################
@@ -353,7 +409,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         ordered: An optional boolean indicating if the :meth:`Schema.dump`
             method should output :class:`collections.OrderedDict` objects
-            instead of simple :class:`dict` objects.  Defaults to ``False``.
+            instead of simple :class:`dict` objects. Defaults to ``False``.
             This does not influence how nested fields are serialized.
 
         many: An optional boolean indicating if the new Schema will be
@@ -423,16 +479,36 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 fields = _fields_only(fields, util.vector_context(only))
 
         # add instance vars to self
+        self._dump_field_functions = {}
         self._fields = fields
         self._ordered = ordered
-        self.many = many
+        self._many = many
+
+    @property
+    def many(self):
+        '''Read-only property: does schema dump collections by default?'''
+        return self._many
+
+    @property
+    def ordered(self):
+        '''Read-only property: does schema dump ordered dicts?'''
+        return self._ordered
 
     @util.reify
     def _dump_function(self):
         '''Return instance-specific dump function (reified).'''
-        with util.complain_about('Lazy evaluation of dump function'):
-            code, namespace = _cns_dump_fields(self._fields, self._ordered)
-            return util.make_function('dump_fields', code, namespace)
+        with util.complain_about('Lazy creation of dump function'):
+            return _dump_fields_function(self._fields, self._ordered)
+
+    def _dump_field_function(self, field_name):
+        '''Return instance-specific dump function for a single field.'''
+        if field_name in self._dump_field_functions:
+            return self._dump_field_functions[field_name]
+
+        with util.complain_about('Lazy creation of dump function for field'):
+            f = _dump_field_function(self._fields[field_name], field_name)
+            self._dump_field_functions[field_name] = f
+            return f
 
     def dump(self, obj, *, many=None):
         '''Return a marshalled representation of obj.

@@ -185,30 +185,3 @@ def ensure_only_instances_of(collection, cls):
     found = [obj for obj in collection if not isinstance(obj, cls)]
     if found:
         raise TypeError('No instances of {}: {!r}'.format(cls, found))
-
-
-def make_function(name, code, globals_=None):
-    '''Return a function created by executing a code string in a new namespace.
-
-    This is not much more than a wrapper around :func:`exec`.
-
-    Args:
-        name: The name of the function to create. Must match the function name
-            in ``code``.
-
-        code: A String containing the function definition code. The name of the
-            function must match ``name``.
-
-        globals_: A dict of globals to mix into the new function's namespace.
-            ``__builtins__`` must be provided explicitly if required.
-
-    .. warning:
-
-        All pitfalls of using :func:`exec` apply to this function as well.
-
-    '''
-    namespace = dict(__builtins__={})
-    if globals_:
-        namespace.update(globals_)
-    exec(code, namespace)
-    return namespace[name]

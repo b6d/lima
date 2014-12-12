@@ -307,6 +307,37 @@ class Embed(_LinkedObjectField):
         return self._schema_inst.dump(val) if val is not None else None
 
 
+class Reference(_LinkedObjectField):
+    '''A Field to reference linked object(s).
+
+    Constructor arguments are similar to those of :class:`Embed`.
+
+    '''
+    def __init__(self,
+                 *,
+                 schema,
+                 field_name,
+                 attr=None,
+                 get=None,
+                 val=None,
+                 **kwargs):
+        super().__init__(schema=schema, attr=attr, get=get, val=val, **kwargs)
+        self._field_name = field_name
+
+    @util.reify
+    def _dump_field_function(self):
+        return self._schema_inst._dump_field_function(self._field_name)
+
+    @util.reify
+    def _many(self):
+        return self._schema_inst.many
+
+    def pack(self, val):
+        if val is None:
+            return None
+        return self._dump_field_function(val, self._many)
+
+
 Nested = Embed
 '''A Field to embed linked object(s)
 

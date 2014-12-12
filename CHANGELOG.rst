@@ -9,6 +9,10 @@ Changelog
 
     While unreleased, the changelog of lima 0.4 is itself subject to change.
 
+- Add new field type ``fields.Reference``.
+
+- Add read-only properties ``Schema.many`` and ``Schema.ordered``.
+
 - Don't create docs for internal modules any more - those did clutter up the
   documentation of the actual API.
 

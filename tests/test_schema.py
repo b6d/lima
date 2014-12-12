@@ -54,39 +54,24 @@ class TestHelperFunctions:
         assert mangle('hash__foo') == '#foo'
         assert mangle('plus__foo') == '+foo'
 
-    def test_cns_dump_fields(self):
-        '''Test if _cns_dump_fields gets a simple function right.'''
-        from textwrap import dedent
+    def test_make_function(self):
+        code = 'def func_in_namespace(): return 1'
+        my_function = schema._make_function('func_in_namespace', code)
+        assert(callable(my_function))
+        assert(my_function() == 1)
+        # make sure the new name didn't leak out into globals/locals
+        with pytest.raises(NameError):
+            func_in_namespace
 
-        class TestSchema(schema.Schema):
-            foo = fields.String(attr='foo_attr')
-            bar = fields.String()
-
-        code, ns = schema._cns_dump_fields(
-            TestSchema.__fields__, ordered=False
-        )
-        expected = dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [{"foo": obj.foo_attr, "bar": obj.bar} for obj in obj]
-                return {"foo": obj.foo_attr, "bar": obj.bar}
-            '''
-        )
-        assert code == expected
-
-        code, ns = schema._cns_dump_fields(
-            TestSchema.__fields__, ordered=True
-        )
-        expected = dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)]) for obj in obj]
-                return OrderedDict([("foo", obj.foo_attr), ("bar", obj.bar)])
-            '''
-        )
-        assert code == expected
+        code = 'def func_in_namespace(): return a'
+        namespace = dict(a=42)
+        my_function = schema._make_function('func_in_namespace',
+                                            code, namespace)
+        assert(callable(my_function))
+        assert(my_function() == 42)
+        # make sure the new name didn't leak out of namespace
+        with pytest.raises(NameError):
+            func_in_namespace
 
 
 class TestSchemaDefinition:

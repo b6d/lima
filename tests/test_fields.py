@@ -19,12 +19,6 @@ SIMPLE_FIELDS = PASSTHROUGH_FIELDS + [
     fields.DateTime
 ]
 
-LINKED_OBJECT_FIELDS = [
-    fields._LinkedObjectField,
-    fields.Embed,
-    fields.Nested,  # to be deprecated in 0.5
-]
-
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
 def test_simple_fields(cls):
@@ -112,55 +106,49 @@ def test_datetime_pack():
     assert fields.DateTime.pack(datetime) == expected
 
 
-class TestLinkedObjectFields:
+class TestLinkedObjectField:
 
     class LinkedSchema(schema.Schema):
         foo = fields.Integer()
         bar = fields.String()
 
-    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-    def test_linked_object_by_schema_inst(self, cls):
+    def test_linked_object_by_schema_inst(self):
         schema_inst = self.LinkedSchema(many=True)
-        field = cls(schema=schema_inst)
+        field = fields._LinkedObjectField(schema=schema_inst)
         assert field._schema_arg is schema_inst
         assert field._schema_inst is schema_inst
-        assert field._schema_inst.many == True
+        assert field._schema_inst.many is True
 
-    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-    def test_linked_object_by_schema_class(self, cls):
+    def test_linked_object_by_schema_class(self):
         schema_cls = self.LinkedSchema
-        field = cls(schema=schema_cls, many=True)
+        field = fields._LinkedObjectField(schema=schema_cls, many=True)
         assert field._schema_arg is schema_cls
         assert isinstance(field._schema_inst, schema_cls)
-        assert field._schema_inst.many == True
+        assert field._schema_inst.many is True
 
-    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-    def test_linked_object_by_schema_name(self, cls):
+    def test_linked_object_by_schema_name(self):
         schema_name = self.__class__.__qualname__ + '.LinkedSchema'
-        field = cls(schema=schema_name, many=True)
+        field = fields._LinkedObjectField(schema=schema_name, many=True)
         assert field._schema_arg is schema_name
         assert isinstance(field._schema_inst, self.LinkedSchema)
-        assert field._schema_inst.many == True
+        assert field._schema_inst.many is True
 
-    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-    def test_linked_object_fail_on_unnecessary_kwargs(self, cls):
+    def test_linked_object_fail_on_unnecessary_kwargs(self):
         schema_inst = self.LinkedSchema()
         # here we supply a kwarg, even though schema is already instantiated
-        field = cls(schema=schema_inst, many=True)
+        field = fields._LinkedObjectField(schema=schema_inst, many=True)
         with pytest.raises(ValueError):
             field._schema_inst  # this will complain about our earlier error
 
-    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-    def test_linked_object_fail_on_nonexistent_class(self, cls):
+    def test_linked_object_fail_on_nonexistent_class(self):
         # here we supply a nonexistent schema name
-        field = cls(schema='NonExistentSchemaName')
+        field = fields._LinkedObjectField(schema='NonExistentSchemaName')
         with pytest.raises(exc.ClassNotFoundError):
             field._schema_inst  # this will complain about our earlier error
 
-    @pytest.mark.parametrize('cls', LINKED_OBJECT_FIELDS)
-    def test_linked_object_fail_on_illegal_schema_arg(self, cls):
+    def test_linked_object_fail_on_illegal_schema_arg(self):
         # here we supply a wrong schema arg
-        field = cls(schema=0xbad1dea)
+        field = fields._LinkedObjectField(schema=0xbad1dea)
         with pytest.raises(TypeError):
             field._schema_inst  # this will complain about our earlier error
 
