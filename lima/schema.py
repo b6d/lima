@@ -165,26 +165,26 @@ def _cns_field_value(field, field_name, field_num):
     return val_code, namespace
 
 
-def _dump_field_function(field, field_name):
-    '''Return a customized dump_field function.
+def _dump_field_function(field, field_name, many):
+    '''Return a customized function that dumps a single field.
 
     Args:
         field: The field.
 
         field_name: The name (key) of the field.
 
+        many: If True(ish), the resulting function will expect collections of
+            objects, otherwise it will expect a single object.
+
     Returns:
         A custom dump_field function.
 
     '''
-    func_tpl = textwrap.dedent(
-        '''\
-        def dump_field(obj, many):
-            if many:
-                return [{val_code} for obj in obj]
-            return {val_code}
-        '''
-    )
+    if many:
+        func_tpl = 'def dump_field(obj): return {val_code}'
+    else:
+        func_tpl = 'def dump_field(objs): return [{val_code} for obj in objs]'
+
     val_code, namespace = _cns_field_value(field, field_name, 0)
 
     # assemble function code
@@ -194,43 +194,49 @@ def _dump_field_function(field, field_name):
     return _make_function('dump_field', code, namespace)
 
 
-def _dump_fields_function(fields, ordered):
-    '''Return a customized dump_fields function.
+def _dump_fields_function(fields, ordered, many):
+    '''Return a customized function that dumps all specified fields.
 
     Args:
         fields: An ordered mapping of field names to fields.
 
-        ordered: If True, make the resulting function return OrderedDict
-            objects, else make it return ordinary dicts.
+        ordered: If True(ish), the resulting function will return OrderedDict
+            objects, otherwise it will return ordinary dicts.
+
+        many: If True(ish), the resulting function will expect collections of
+            objects, otherwise it will expect a single object.
 
     Returns:
         A custom dump_fields function.
 
     '''
-    # Namespace must contain OrderedDict if we want ordered output.
-    namespace = {'OrderedDict': OrderedDict} if ordered else {}
-
-    # Get correct templates depending on "ordered"
+    # Get correct templates & namespace depending on "ordered" and "many" args
     if ordered:
-        func_tpl = textwrap.dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [OrderedDict([{joined_entries}]) for obj in obj]
-                return OrderedDict([{joined_entries}])
-            '''
-        )
+        if many:
+            func_tpl = (
+                'def dump_fields(objs):\n'
+                '    return [OrderedDict([{joined_entries}]) for obj in objs]'
+            )
+        else:
+            func_tpl = (
+                'def dump_fields(obj):\n'
+                '    return OrderedDict([{joined_entries}])'
+            )
         entry_tpl = '("{key}", {val_code})'
+        namespace = {'OrderedDict': OrderedDict}
     else:
-        func_tpl = textwrap.dedent(
-            '''\
-            def dump_fields(obj, many):
-                if many:
-                    return [{{{joined_entries}}} for obj in obj]
-                return {{{joined_entries}}}
-            '''
-        )
+        if many:
+            func_tpl = (
+                'def dump_fields(objs):\n'
+                '    return [{{{joined_entries}}} for obj in objs]'
+            )
+        else:
+            func_tpl = (
+                'def dump_fields(obj):\n'
+                '    return {{{joined_entries}}}'
+            )
         entry_tpl = '"{key}": {val_code}'
+        namespace = {}
 
     # one entry per field
     entries = []
@@ -479,8 +485,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
                 fields = _fields_only(fields, util.vector_context(only))
 
         # add instance vars to self
-        self._dump_field_functions = {}
         self._fields = fields
+        self._dump_field_functions = {}
         self._ordered = ordered
         self._many = many
 
@@ -498,7 +504,8 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     def _dump_function(self):
         '''Return instance-specific dump function (reified).'''
         with util.complain_about('Lazy creation of dump function'):
-            return _dump_fields_function(self._fields, self._ordered)
+            return _dump_fields_function(self._fields,
+                                         self._ordered, self._many)
 
     def _dump_field_function(self, field_name):
         '''Return instance-specific dump function for a single field.'''
@@ -506,11 +513,12 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             return self._dump_field_functions[field_name]
 
         with util.complain_about('Lazy creation of dump function for field'):
-            f = _dump_field_function(self._fields[field_name], field_name)
+            f = _dump_field_function(self._fields[field_name],
+                                     field_name, self._many)
             self._dump_field_functions[field_name] = f
             return f
 
-    def dump(self, obj, *, many=None):
+    def dump(self, obj):
         '''Return a marshalled representation of obj.
 
         Args:
@@ -529,4 +537,4 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         '''
         # call the instance-specific dump function
-        return self._dump_function(obj, self.many if many is None else many)
+        return self._dump_function(obj)

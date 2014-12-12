@@ -328,14 +328,10 @@ class Reference(_LinkedObjectField):
     def _dump_field_function(self):
         return self._schema_inst._dump_field_function(self._field_name)
 
-    @util.reify
-    def _many(self):
-        return self._schema_inst.many
-
     def pack(self, val):
         if val is None:
             return None
-        return self._dump_field_function(val, self._many)
+        return self._dump_field_function(val)
 
 
 Nested = Embed

@@ -134,7 +134,7 @@ def test_constant_value_field_dump(king):
     assert constant_value_schema.dump(king) == expected
 
 
-def test_many_dump1(knights):
+def test_many_dump(knights):
     multi_person_schema = PersonSchema(only=['name'], many=True)
     expected = [
         {'name': 'Bedevere'},
@@ -144,14 +144,15 @@ def test_many_dump1(knights):
     assert multi_person_schema.dump(knights) == expected
 
 
-def test_many_dump2(knights):
+def test_dump_fail_on_unexpected_collection(knights):
     multi_person_schema = PersonSchema(only=['name'], many=False)
     expected = [
         {'name': 'Bedevere'},
         {'name': 'Lancelot'},
         {'name': 'Galahad'},
     ]
-    assert multi_person_schema.dump(knights, many=True) == expected
+    with pytest.raises(Exception):
+        multi_person_schema.dump(knights)
 
 
 @pytest.mark.parametrize('schema_cls',
