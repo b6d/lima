@@ -9,6 +9,10 @@ Changelog
 
     While unreleased, the changelog of lima 0.4 is itself subject to change.
 
+- **Breaking Change:** The ``Schema.dump`` method no longer supports the
+  ``many`` argument. Schema instances now either serialize collections of
+  objects or single objects, but not both.
+
 - Add new field type ``fields.Reference``.
 
 - Add read-only properties ``Schema.many`` and ``Schema.ordered``.
