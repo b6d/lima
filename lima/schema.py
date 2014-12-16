@@ -386,7 +386,12 @@ class SchemaMeta(type):
 
     @classmethod
     def __prepare__(metacls, name, bases):
-        '''Return an OrderedDict as the class namespace.'''
+        '''Return an OrderedDict as the class namespace.
+
+        This allows us to keep track of the order in which fields were defined
+        for a schema.
+
+        '''
         return OrderedDict()
 
 
