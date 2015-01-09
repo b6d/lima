@@ -603,6 +603,28 @@ class TestSchemaInstantiation:
             person_schema = person_schema_cls(exclude=['number'],
                                               only=['name'])
 
+    def test_schema_many_property(self, person_schema_cls):
+        '''test if schema.many gets set and is read-only'''
+        person_schema = person_schema_cls()
+        assert person_schema.many == False
+        person_schema = person_schema_cls(many=False)
+        assert person_schema.many == False
+        person_schema = person_schema_cls(many=True)
+        assert person_schema.many == True
+        with pytest.raises(AttributeError):
+            person_schema.many = False
+
+    def test_schema_ordered_property(self, person_schema_cls):
+        '''test if schema.ordered gets set and is read-only'''
+        person_schema = person_schema_cls()
+        assert person_schema.ordered == False
+        person_schema = person_schema_cls(ordered=False)
+        assert person_schema.ordered == False
+        person_schema = person_schema_cls(ordered=True)
+        assert person_schema.ordered == True
+        with pytest.raises(AttributeError):
+            person_schema.ordered = False
+
 
 class TestLazyDumpFunctionCreation:
     def test_fail_on_non_identifier_attr_name(self):
