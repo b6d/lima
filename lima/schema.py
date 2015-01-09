@@ -499,12 +499,12 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
     @property
     def many(self):
-        '''Read-only property: does schema dump collections by default?'''
+        '''Read-only property: does the dump method expect collections?'''
         return self._many
 
     @property
     def ordered(self):
-        '''Read-only property: does schema dump ordered dicts?'''
+        '''Read-only property: does the dump method return ordered dicts?'''
         return self._ordered
 
     @util.reify
@@ -533,18 +533,15 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         '''Return a marshalled representation of obj.
 
         Args:
-            obj: The object (or collection of objects) to marshall.
-
-            many: Wether obj is a single object or a collection of objects. If
-                ``many`` is ``None``, the value of the instance's
-                :attr:`many` attribute is used.
+            obj: The object (or collection of objects, depending on the
+                schema's :attr:`many` property) to marshall.
 
         Returns:
             A representation of ``obj`` in the form of a JSON-serializable dict
-            (or :class:`collections.OrderedDict` if the Schema was created with
-            ``ordered==True``), with each entry corresponding to one of the
-            :class:`Schema`'s fields. (Or a list of such dicts in case a
-            collection of objects was marshalled)
+            (or :class:`collections.OrderedDict`, depending on the schema's
+            :attr:`ordered` property), with each entry corresponding to one of
+            the schema's fields. (Or a list of such dicts in case a collection
+            of objects was marshalled)
 
         '''
         # call the instance-specific dump function
