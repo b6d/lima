@@ -100,8 +100,8 @@ def _make_function(name, code, globals_=None):
     return namespace[name]
 
 
-def _cns_field_value(field, field_name, field_num):
-    '''Return (code, namespace)-tuple for determining a field's serialized val.
+def _field_val_cns(field, field_name, field_num):
+    '''Return (code, namespace)-tuple for determining a field's value.
 
     Args:
         field: A :class:`lima.fields.Field` instance.
@@ -165,7 +165,7 @@ def _cns_field_value(field, field_name, field_num):
     return val_code, namespace
 
 
-def _dump_field_function(field, field_name, many):
+def _dump_field_func(field, field_name, many):
     '''Return a customized function that dumps a single field.
 
     Args:
@@ -177,15 +177,16 @@ def _dump_field_function(field, field_name, many):
             objects, otherwise it will expect a single object.
 
     Returns:
-        A custom dump_field function.
+        A custom function that expects an object (or a collection of objects
+        depending on ``many``), and returns a single field's value per object.
 
     '''
+    val_code, namespace = _field_val_cns(field, field_name, 0)
+
     if many:
         func_tpl = 'def dump_field(obj): return {val_code}'
     else:
         func_tpl = 'def dump_field(objs): return [{val_code} for obj in objs]'
-
-    val_code, namespace = _cns_field_value(field, field_name, 0)
 
     # assemble function code
     code = func_tpl.format(val_code=val_code)
@@ -194,8 +195,8 @@ def _dump_field_function(field, field_name, many):
     return _make_function('dump_field', code, namespace)
 
 
-def _dump_fields_function(fields, ordered, many):
-    '''Return a customized function that dumps all specified fields.
+def _dump_fields_func(fields, ordered, many):
+    '''Return a customized function that dumps multiple fields.
 
     Args:
         fields: An ordered mapping of field names to fields.
@@ -207,7 +208,8 @@ def _dump_fields_function(fields, ordered, many):
             objects, otherwise it will expect a single object.
 
     Returns:
-        A custom dump_fields function.
+        A custom function that expects an object (or a collectionof objects
+        depending on ``many``), and returns multiple fields' values per object.
 
     '''
     # Get correct templates & namespace depending on "ordered" and "many" args
@@ -243,7 +245,7 @@ def _dump_fields_function(fields, ordered, many):
 
     # iterate over fields to fill up entries
     for field_num, (field_name, field) in enumerate(fields.items()):
-        val_code, val_ns = _cns_field_value(field, field_name, field_num)
+        val_code, val_ns = _field_val_cns(field, field_name, field_num)
         namespace.update(val_ns)
 
         # try to guard against code injection via quotes in key
@@ -491,7 +493,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # add instance vars to self
         self._fields = fields
-        self._dump_field_functions = {}
+        self._dump_field_funcs = {}  # cache for funcs dumping single fields
         self._ordered = ordered
         self._many = many
 
@@ -506,21 +508,25 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         return self._ordered
 
     @util.reify
-    def _dump_function(self):
-        '''Return instance-specific dump function (reified).'''
-        with util.complain_about('Lazy creation of dump function'):
-            return _dump_fields_function(self._fields,
-                                         self._ordered, self._many)
+    def _dump_fields_func(self):
+        '''Return instance-specific dump function for all fields (reified).'''
+        with util.complain_about('Lazy creation of dump fields function'):
+            return _dump_fields_func(self._fields, self._ordered, self._many)
 
-    def _dump_field_function(self, field_name):
-        '''Return instance-specific dump function for a single field.'''
+    def _dump_field_func(self, field_name):
+        '''Return instance-specific dump function for a single field.
+
+        Functions are created when requested for the first time and get cached
+        for subsequent calls of _dump_field_function.
+
+        '''
         if field_name in self._dump_field_functions:
-            return self._dump_field_functions[field_name]
+            return self._dump_field_funcs[field_name]
 
-        with util.complain_about('Lazy creation of dump function for field'):
-            f = _dump_field_function(self._fields[field_name],
-                                     field_name, self._many)
-            self._dump_field_functions[field_name] = f
+        with util.complain_about('Lazy creation of dump field function'):
+            f = _dump_field_funcs(self._fields[field_name],
+                                  field_name, self._many)
+            self._dump_field_funcs[field_name] = f
             return f
 
     def dump(self, obj):
@@ -542,4 +548,4 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         '''
         # call the instance-specific dump function
-        return self._dump_function(obj)
+        return self._dump_fields_func(obj)

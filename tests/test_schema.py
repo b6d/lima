@@ -617,7 +617,7 @@ class TestLazyDumpFunctionCreation:
 
         # the dump function is created at first access. this should fail.
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields_func
 
     def test_fail_on_non_identifier_field_name_without_attr(self):
         '''Test if providing a non-identifier field name raises an error ...
@@ -638,7 +638,7 @@ class TestLazyDumpFunctionCreation:
 
         # the dump function is created at first access. this should fail.
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields_func
 
     def test_fail_on_keyword_attr_name(self):
         '''Test if providing a non-identifier attr name raises an error'''
@@ -651,7 +651,7 @@ class TestLazyDumpFunctionCreation:
 
         # the dump function is created at first access. this should fail.
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields_func
 
     def test_fail_on_keyword_field_name_without_attr(self):
         '''Test if providing a non-identifier field name raises an error ...
@@ -672,7 +672,7 @@ class TestLazyDumpFunctionCreation:
 
         # the dump function is created at first access. this should fail.
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields_func
 
     def test_succes_on_non_identifier_field_name_with_attr(self):
         '''Test if providing a non-identifier field name raises no error ...
@@ -689,7 +689,7 @@ class TestLazyDumpFunctionCreation:
 
         # these should both succeed
         test_schema = TestSchema()
-        test_schema._dump_function
+        test_schema._dump_fields_func
 
         assert 'not;an-identifier' in test_schema._fields
 
@@ -707,4 +707,4 @@ class TestLazyDumpFunctionCreation:
 
         # the dump function is created at first access. this should fail.
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields_func
