@@ -106,53 +106,172 @@ def test_datetime_pack():
     assert fields.DateTime.pack(datetime) == expected
 
 
+class SomeClass:
+    '''Arbitrary class (to test linked object fields).'''
+    def __init__(self, name, number):
+        self.name = name
+        self.number = number
+
+
+class SomeSchema(schema.Schema):
+    '''Schema for SomeClass (to test linked object fields).'''
+    name = fields.String()
+    number = fields.Integer()
+
+
 class TestLinkedObjectField:
+    '''Tests for _LinkedObjectField, the base class for Embed and Reference'''
 
-    class LinkedSchema(schema.Schema):
-        foo = fields.Integer()
-        bar = fields.String()
+    @pytest.mark.parametrize(
+        'schema_arg',
+        [SomeSchema(), SomeSchema, __name__ + '.SomeSchema']
+    )
+    def test_linked_object_field(self, schema_arg):
+        field = fields._LinkedObjectField(schema=schema_arg)
+        assert field._schema_arg is schema_arg
+        assert isinstance(field._schema_inst, SomeSchema)
 
-    def test_linked_object_by_schema_inst(self):
-        schema_inst = self.LinkedSchema(many=True)
-        field = fields._LinkedObjectField(schema=schema_inst)
-        assert field._schema_arg is schema_inst
-        assert field._schema_inst is schema_inst
+    @pytest.mark.parametrize(
+        'field',
+        [
+            fields._LinkedObjectField(
+                schema=SomeSchema(many=True, only='number')
+            ),
+            fields._LinkedObjectField(
+                schema=SomeSchema, many=True, only='number'
+            ),
+            fields._LinkedObjectField(
+                schema=__name__ + '.SomeSchema', many=True, only='number'
+            )
+        ]
+    )
+    def test_linked_object_field_with_kwargs(self, field):
+        assert isinstance(field._schema_inst, SomeSchema)
         assert field._schema_inst.many is True
-
-    def test_linked_object_by_schema_class(self):
-        schema_cls = self.LinkedSchema
-        field = fields._LinkedObjectField(schema=schema_cls, many=True)
-        assert field._schema_arg is schema_cls
-        assert isinstance(field._schema_inst, schema_cls)
-        assert field._schema_inst.many is True
-
-    def test_linked_object_by_schema_name(self):
-        schema_name = self.__class__.__qualname__ + '.LinkedSchema'
-        field = fields._LinkedObjectField(schema=schema_name, many=True)
-        assert field._schema_arg is schema_name
-        assert isinstance(field._schema_inst, self.LinkedSchema)
-        assert field._schema_inst.many is True
+        assert list(field._schema_inst._fields.keys()) == ['number']
 
     def test_linked_object_fail_on_unnecessary_kwargs(self):
-        schema_inst = self.LinkedSchema()
-        # here we supply a kwarg, even though schema is already instantiated
+        schema_inst = SomeSchema()
+        # "many" is already defined for a schema instance. providing it again
+        # when embedding will raise an error on lazy eval
+        field = fields._LinkedObjectField(schema=schema_inst, many=True)
+        with pytest.raises(ValueError):
+            field._schema_inst  # this will complain about our earlier error
+
+    def test_linked_object_fail_on_unnecessary_kwargs(self):
+        schema_inst = SomeSchema()
+        # "many" is already defined for a schema instance. providing it again
+        # when embedding will raise an error on lazy eval
         field = fields._LinkedObjectField(schema=schema_inst, many=True)
         with pytest.raises(ValueError):
             field._schema_inst  # this will complain about our earlier error
 
     def test_linked_object_fail_on_nonexistent_class(self):
-        # here we supply a nonexistent schema name
+        # nonexistent schema name will raise an error on lazy eval
         field = fields._LinkedObjectField(schema='NonExistentSchemaName')
         with pytest.raises(exc.ClassNotFoundError):
             field._schema_inst  # this will complain about our earlier error
 
     def test_linked_object_fail_on_illegal_schema_arg(self):
-        # here we supply a wrong schema arg
-        field = fields._LinkedObjectField(schema=0xbad1dea)
+        # wrong "schema" arg type will raise an error on lazy eval
+        field = fields._LinkedObjectField(schema=123)
         with pytest.raises(TypeError):
             field._schema_inst  # this will complain about our earlier error
 
     def test_linked_object_field_pack_not_implemented(self):
-        field = fields._LinkedObjectField(schema='ThisDoesntEvenHaveToExist')
+        field = fields._LinkedObjectField(schema=SomeSchema)
+        # pack method is not implemented
         with pytest.raises(NotImplementedError):
             field.pack('foo')
+
+
+class TestEmbed:
+    '''Tests for Embed, a class for embedding linked objects.'''
+
+    @pytest.mark.parametrize(
+        'schema_arg',
+        [SomeSchema(), SomeSchema, __name__ + '.SomeSchema']
+    )
+    def test_pack(self, schema_arg):
+        field = fields.Embed(schema=schema_arg)
+        result = field.pack(SomeClass('one', 1))
+        expected = {'name': 'one', 'number': 1}
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        'field',
+        [
+            fields.Embed(
+                schema=SomeSchema(many=True, only='number')
+            ),
+            fields.Embed(
+                schema=SomeSchema, many=True, only='number'
+            ),
+            fields.Embed(
+                schema=__name__ + '.SomeSchema', many=True, only='number'
+            )
+        ]
+    )
+    def test_pack_with_kwargs(self, field):
+        result = field.pack([SomeClass('one', 1), SomeClass('two', 2)])
+        expected = [{'number': 1}, {'number': 2}]
+        assert result == expected
+
+
+class TestReference:
+    '''Tests for Reference, a class for referencing linked objects.'''
+
+    @pytest.mark.parametrize(
+        'schema_arg',
+        [SomeSchema(), SomeSchema, __name__ + '.SomeSchema']
+    )
+    def test_pack(self, schema_arg):
+        field = fields.Reference(schema=schema_arg, field_name='number')
+        result = field.pack(SomeClass('one', 1))
+        expected = 1
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        'field',
+        [
+            fields.Reference(
+                schema=SomeSchema(many=True, only='number'),
+                field_name = 'number'
+            ),
+            fields.Reference(
+                schema=SomeSchema, many=True, only='number',
+                field_name = 'number'
+            ),
+            fields.Reference(
+                schema=__name__ + '.SomeSchema', many=True, only='number',
+                field_name = 'number'
+            )
+        ]
+    )
+    def test_pack_with_kwargs(self, field):
+        result = field.pack([SomeClass('one', 1), SomeClass('two', 2)])
+        expected = [1, 2]
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        'field',
+        [
+            fields.Reference(
+                schema=SomeSchema(many=True, exclude='number'),
+                field_name = 'number'
+            ),
+            fields.Reference(
+                schema=SomeSchema, many=True, exclude='number',
+                field_name = 'number'
+            ),
+            fields.Reference(
+                schema=__name__ + '.SomeSchema', many=True, exclude='number',
+                field_name = 'number'
+            )
+        ]
+    )
+    def test_fail_on_missing_field_name(self, field):
+        # field 'number' is no field of the field's associated schema instance since it
+        # was excluded
+        with pytest.raises(KeyError):
+            result = field.pack([SomeClass('one', 1), SomeClass('two', 2)])
