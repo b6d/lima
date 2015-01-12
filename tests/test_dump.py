@@ -227,3 +227,38 @@ def test_dump_embed_schema_self(king):
         'boss': {'name': 'Arthur'},
     }
     assert king_schema.dump(king) == expected
+
+
+def test_dump_exotic_field_names():
+
+    exotic_names = [
+        '',  # empty string
+        '"',  # single quote
+        "'",  # double quote
+        '\u2665',  # unicode heart symbol
+        'print(123)',  # valid python code
+        'print("123\'',  # invalid python code
+    ]
+
+    class ExoticFieldNamesSchema(schema.Schema):
+        __lima_args__ = {
+            'include': {
+                name: fields.String(attr='foo') for name in exotic_names
+            }
+        }
+
+    class Foo:
+        def __init__(self):
+            self.foo = 'foobar'
+    obj = Foo()
+
+    exotic_field_names_schema = ExoticFieldNamesSchema()
+    result = exotic_field_names_schema.dump(obj)
+    expected = {name: 'foobar' for name in exotic_names}
+    assert result == expected
+
+    for name in exotic_names:
+        dump_field_func = exotic_field_names_schema._dump_field_func(name)
+        result = dump_field_func(obj)
+        expected = 'foobar'
+        assert result == expected
