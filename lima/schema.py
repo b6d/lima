@@ -224,7 +224,7 @@ def _dump_fields_func(fields, ordered, many):
                 'def dump_fields(obj):\n'
                 '    return OrderedDict([{joined_entries}])'
             )
-        entry_tpl = '("{key}", {val_code})'
+        entry_tpl = '({field_name!r}, {val_code})'
         namespace = {'OrderedDict': OrderedDict}
     else:
         if many:
@@ -237,7 +237,7 @@ def _dump_fields_func(fields, ordered, many):
                 'def dump_fields(obj):\n'
                 '    return {{{joined_entries}}}'
             )
-        entry_tpl = '"{key}": {val_code}'
+        entry_tpl = '{field_name!r}: {val_code}'
         namespace = {}
 
     # one entry per field
@@ -248,14 +248,10 @@ def _dump_fields_func(fields, ordered, many):
         val_code, val_ns = _field_val_cns(field, field_name, field_num)
         namespace.update(val_ns)
 
-        # try to guard against code injection via quotes in key
-        key = str(field_name)
-        if '"' in key or "'" in key:
-            msg = 'Quotes are not allowed in field names: {}'
-            raise ValueError(msg.format(key))
-
         # add entry
-        entries.append(entry_tpl.format(key=key, val_code=val_code))
+        entries.append(
+            entry_tpl.format(field_name=field_name, val_code=val_code)
+        )
 
     # assemble function code
     code = func_tpl.format(joined_entries=', '.join(entries))

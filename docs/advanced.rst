@@ -110,9 +110,6 @@ This enables us to do the following:
    explicitly how the data for these fields should be determined (see
    :ref:`field_data_sources`).
 
-   Also, quotes in field names are currently not allowed in lima, regardless
-   of how they are specified.
-
 
 Advanced Topics Recap
 =====================
