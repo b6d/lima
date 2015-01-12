@@ -184,9 +184,9 @@ def _dump_field_func(field, field_name, many):
     val_code, namespace = _field_val_cns(field, field_name, 0)
 
     if many:
-        func_tpl = 'def dump_field(obj): return {val_code}'
-    else:
         func_tpl = 'def dump_field(objs): return [{val_code} for obj in objs]'
+    else:
+        func_tpl = 'def dump_field(obj): return {val_code}'
 
     # assemble function code
     code = func_tpl.format(val_code=val_code)
@@ -493,7 +493,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # add instance vars to self
         self._fields = fields
-        self._dump_field_funcs = {}  # cache for funcs dumping single fields
+        self._dump_field_func_cache = {}  # dict of funcs dumping single fields
         self._ordered = ordered
         self._many = many
 
@@ -517,17 +517,17 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         '''Return instance-specific dump function for a single field.
 
         Functions are created when requested for the first time and get cached
-        for subsequent calls of _dump_field_function.
+        for subsequent calls of this method.
 
         '''
-        if field_name in self._dump_field_functions:
-            return self._dump_field_funcs[field_name]
+        if field_name in self._dump_field_func_cache:
+            return self._dump_field_func_cache[field_name]
 
         with util.complain_about('Lazy creation of dump field function'):
-            f = _dump_field_funcs(self._fields[field_name],
-                                  field_name, self._many)
-            self._dump_field_funcs[field_name] = f
-            return f
+            func = _dump_field_func(self._fields[field_name],
+                                   field_name, self._many)
+            self._dump_field_func_cache[field_name] = func
+            return func
 
     def dump(self, obj):
         '''Return a marshalled representation of obj.
