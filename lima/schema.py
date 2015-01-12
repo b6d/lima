@@ -508,7 +508,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         return self._ordered
 
     @util.reify
-    def _dump_fields_func(self):
+    def _dump_fields(self):
         '''Return instance-specific dump function for all fields (reified).'''
         with util.complain_about('Lazy creation of dump fields function'):
             return _dump_fields_func(self._fields, self._ordered, self._many)
@@ -545,4 +545,4 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         '''
         # call the instance-specific dump function
-        return self._dump_fields_func(obj)
+        return self._dump_fields(obj)

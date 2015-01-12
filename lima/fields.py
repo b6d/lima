@@ -291,7 +291,7 @@ class Embed(_LinkedObjectField):
     @util.reify
     def _pack_func(self):
         '''Return the associated schema's dump fields *function* (reified).'''
-        return self._schema_inst._dump_fields_func
+        return self._schema_inst._dump_fields
 
     def pack(self, val):
         '''Return the marshalled representation of val.
