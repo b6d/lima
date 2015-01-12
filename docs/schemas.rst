@@ -269,18 +269,10 @@ Consider this:
     ]
 
 Instead of looping over this collection ourselves, we can ask the schema object
-to do this for us - either for a single call (by specifying ``many=True`` to
-the :meth:`dump` method), or for every call of :meth:`dump` (by specifying
-``many=True`` to the schema's constructor):
+to do this for us by specifying ``many=True`` to the schema's constructor):
 
 .. code-block:: python
-    :emphasize-lines: 2,7
-
-    person_schema = PersonSchema(only='last_name')
-    person_schema.dump(persons, many=True)
-    # [{'last_name': 'Hemingway'},
-    #  {'last_name': 'Woolf'},
-    #  {'last_name': 'Zweig'}]
+    :emphasize-lines: 1
 
     many_persons_schema =  PersonSchema(only='last_name', many=True)
     many_persons_schema.dump(persons)

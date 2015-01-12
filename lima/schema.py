@@ -539,6 +539,9 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             the schema's fields. (Or a list of such dicts in case a collection
             of objects was marshalled)
 
+        .. versionchanged:: 0.4
+            Removed the ``many`` parameter of this method.
+
         '''
         # call the instance-specific dump function
         return self._dump_fields(obj)
