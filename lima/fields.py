@@ -304,6 +304,10 @@ class Embed(_LinkedObjectField):
             associated schema object's (internal) dump fields *function* - or
             None if ``val`` is None.
 
+        Note that overriding the associated schema's
+        :meth:`~lima.schema.Schema.dump` *method* does not affect the result of
+        this method. This behaviour might change in the future.
+
         '''
         return self._pack_func(val) if val is not None else None
 
