@@ -141,7 +141,7 @@ class DateTime(Field):
 
 
 class _LinkedObjectField(Field):
-    '''A field that references the schema of a linked object.
+    '''A base class for fields that represent linked objects.
 
     This is to be considered an abstract class. Concrete implementations will
     have to define their own :meth:`pack` methods, utilizing the associated
@@ -157,13 +157,11 @@ class _LinkedObjectField(Field):
             <on_class_names>` for clarification of these concepts). Schemas
             defined within a local namespace can not be referenced by name.
 
-        attr: The optional name of the corresponding attribute containing the
-            linked object(s).
+        attr: See :class:`Field`.
 
-        get: An optional getter function accepting an object as its only
-            parameter and returning the field value (the linked object).
+        get: See :class:`Field`.
 
-        val: An optional constant value for the field (the linked object).
+        val: See :class:`Field`.
 
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
             constructor when the time has come to instance it. Must be empty if
@@ -247,13 +245,11 @@ class Embed(_LinkedObjectField):
             <on_class_names>` for clarification of these concepts). Schemas
             defined within a local namespace can not be referenced by name.
 
-        attr: The optional name of the corresponding attribute containing the
-            linked object(s).
+        attr: See :class:`Field`.
 
-        get: An optional getter function accepting an object as its only
-            parameter and returning the field value (the linked object).
+        get: See :class:`Field`.
 
-        val: An optional constant value for the field (the linked object).
+        val: See :class:`Field`.
 
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
             constructor when the time has come to instance it. Must be empty if
@@ -292,25 +288,42 @@ class Embed(_LinkedObjectField):
         user = Embed(attr='login_user', schema=PersonSchema)
 
     '''
+    @util.reify
+    def _pack_func(self):
+        '''Return the associated schema's dump fields *function* (reified).'''
+        return self._schema_inst._dump_fields
+
     def pack(self, val):
-        '''Return the output of the linked object's schema's dump method.
+        '''Return the marshalled representation of val.
 
         Args:
-            val: The nested object to convert.
+            val: The linked object to embed.
 
         Returns:
-            The output of the linked :class:`lima.schema.Schema`'s
-            :meth:`lima.schema.Schema.dump` method (or None if ``val`` is
-            None).
+            The marshalled representation of val determined using the the
+            associated schema object's (internal) dump fields *function* - or
+            None if ``val`` is None.
 
         '''
-        return self._schema_inst.dump(val) if val is not None else None
+        return self._pack_func(val) if val is not None else None
 
 
 class Reference(_LinkedObjectField):
     '''A Field to reference linked object(s).
 
-    Constructor arguments are similar to those of :class:`Embed`.
+    Args:
+        schema: The schema of the linked object (see :class:`Embed`).
+
+        field_name: The schema field to act as reference to the linked object.
+
+        attr: see :class:`Embed`.
+
+        get: see :class:`Embed`.
+
+        val: see :class:`Embed`.
+
+        kwargs: see :class:`Embed`.
+
 
     '''
     def __init__(self,
@@ -325,13 +338,23 @@ class Reference(_LinkedObjectField):
         self._field_name = field_name
 
     @util.reify
-    def _dump_field_function(self):
-        return self._schema_inst._dump_field_function(self._field_name)
+    def _pack_func(self):
+        '''Return the associated schema's dump field *function* (reified).'''
+        return self._schema_inst._dump_field_func(self._field_name)
 
     def pack(self, val):
-        if val is None:
-            return None
-        return self._dump_field_function(val)
+        '''Return the marshalled representation of val.
+
+        Args:
+            val: The nested object to marshall.
+
+        Returns:
+            The marshalled representation of val, determined using the the
+            associated schema object's (internal) dump field *function* - or
+            None if ``val`` is None.
+
+        '''
+        return self._pack_func(val) if val is not None else None
 
 
 Nested = Embed

@@ -603,8 +603,31 @@ class TestSchemaInstantiation:
             person_schema = person_schema_cls(exclude=['number'],
                                               only=['name'])
 
+    def test_schema_many_property(self, person_schema_cls):
+        '''test if schema.many gets set and is read-only'''
+        person_schema = person_schema_cls()
+        assert person_schema.many == False
+        person_schema = person_schema_cls(many=False)
+        assert person_schema.many == False
+        person_schema = person_schema_cls(many=True)
+        assert person_schema.many == True
+        with pytest.raises(AttributeError):
+            person_schema.many = False
+
+    def test_schema_ordered_property(self, person_schema_cls):
+        '''test if schema.ordered gets set and is read-only'''
+        person_schema = person_schema_cls()
+        assert person_schema.ordered == False
+        person_schema = person_schema_cls(ordered=False)
+        assert person_schema.ordered == False
+        person_schema = person_schema_cls(ordered=True)
+        assert person_schema.ordered == True
+        with pytest.raises(AttributeError):
+            person_schema.ordered = False
+
 
 class TestLazyDumpFunctionCreation:
+
     def test_fail_on_non_identifier_attr_name(self):
         '''Test if providing a non-identifier attr name raises an error'''
 
@@ -612,12 +635,12 @@ class TestLazyDumpFunctionCreation:
             foo = fields.String()
             foo.attr = 'this-is@not;an+identifier'
 
-        # this should succeed
         test_schema = TestSchema()
-
-        # the dump function is created at first access. this should fail.
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('foo')
 
     def test_fail_on_non_identifier_field_name_without_attr(self):
         '''Test if providing a non-identifier field name raises an error ...
@@ -633,12 +656,12 @@ class TestLazyDumpFunctionCreation:
                 }
             }
 
-        # this should succeed
         test_schema = TestSchema()
-
-        # the dump function is created at first access. this should fail.
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('not@an-identifier')
 
     def test_fail_on_keyword_attr_name(self):
         '''Test if providing a non-identifier attr name raises an error'''
@@ -646,12 +669,22 @@ class TestLazyDumpFunctionCreation:
             foo = fields.String()
             foo.attr = 'class'  # 'class' is a keyword
 
-        # this should succeed
         test_schema = TestSchema()
-
-        # the dump function is created at first access. this should fail.
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('foo')
+
+    def test_fail_on_nonexistent_field(self):
+        '''Test if providing a non-identifier attr name raises an error'''
+        class TestSchema(schema.Schema):
+            foo = fields.String()
+
+        test_schema = TestSchema()
+        # dump funcs are created at first access. the next lines should fail
+        with pytest.raises(KeyError):
+            test_schema._dump_field_func('this_field_does_not_exist')
 
     def test_fail_on_keyword_field_name_without_attr(self):
         '''Test if providing a non-identifier field name raises an error ...
@@ -667,12 +700,12 @@ class TestLazyDumpFunctionCreation:
                 }
             }
 
-        # this should succeed
         test_schema = TestSchema()
-
-        # the dump function is created at first access. this should fail.
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema._dump_function
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('class')
 
     def test_succes_on_non_identifier_field_name_with_attr(self):
         '''Test if providing a non-identifier field name raises no error ...
@@ -687,24 +720,23 @@ class TestLazyDumpFunctionCreation:
                 }
             }
 
-        # these should both succeed
+        # these should all succeed
         test_schema = TestSchema()
-        test_schema._dump_function
-
+        test_schema._dump_fields
+        test_schema._dump_field_func('not;an-identifier')
         assert 'not;an-identifier' in test_schema._fields
 
-    def test_fail_on_field_name_with_quotes(self):
-        '''Test if providing a field name with quotes raises an error ...'''
+    def test_function_caching(self):
+        '''Test if lazily created functions are cached'''
+
         class TestSchema(schema.Schema):
-            __lima_args__ = {
-                'include': {
-                    'field_with_"quotes"': fields.String(attr='foo')
-                }
-            }
+            foo = fields.String()
 
-        # this should succeed
         test_schema = TestSchema()
+        fn1 = test_schema._dump_fields
+        fn2 = test_schema._dump_fields
+        assert fn1 is fn2  # after first eval, the same obj should be returned
 
-        # the dump function is created at first access. this should fail.
-        with pytest.raises(ValueError):
-            test_schema._dump_function
+        fn1 = test_schema._dump_field_func('foo')
+        fn2 = test_schema._dump_field_func('foo')
+        assert fn1 is fn2  # after first eval, the same obj should be returned

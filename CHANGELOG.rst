@@ -27,6 +27,8 @@ Changelog
   needed, but it also means that some errors might surface at a later time
   (lima mentions this when raising such exceptions).
 
+- Allow quotes in field names.
+
 - Small speed improvement when serializing collections.
 
 - Deprecate ``fields.Nested`` in favour of ``fields.Embed``.

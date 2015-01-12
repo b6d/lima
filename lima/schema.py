@@ -100,8 +100,8 @@ def _make_function(name, code, globals_=None):
     return namespace[name]
 
 
-def _cns_field_value(field, field_name, field_num):
-    '''Return (code, namespace)-tuple for determining a field's serialized val.
+def _field_val_cns(field, field_name, field_num):
+    '''Return (code, namespace)-tuple for determining a field's value.
 
     Args:
         field: A :class:`lima.fields.Field` instance.
@@ -165,7 +165,7 @@ def _cns_field_value(field, field_name, field_num):
     return val_code, namespace
 
 
-def _dump_field_function(field, field_name, many):
+def _dump_field_func(field, field_name, many):
     '''Return a customized function that dumps a single field.
 
     Args:
@@ -177,15 +177,16 @@ def _dump_field_function(field, field_name, many):
             objects, otherwise it will expect a single object.
 
     Returns:
-        A custom dump_field function.
+        A custom function that expects an object (or a collection of objects
+        depending on ``many``), and returns a single field's value per object.
 
     '''
-    if many:
-        func_tpl = 'def dump_field(obj): return {val_code}'
-    else:
-        func_tpl = 'def dump_field(objs): return [{val_code} for obj in objs]'
+    val_code, namespace = _field_val_cns(field, field_name, 0)
 
-    val_code, namespace = _cns_field_value(field, field_name, 0)
+    if many:
+        func_tpl = 'def dump_field(objs): return [{val_code} for obj in objs]'
+    else:
+        func_tpl = 'def dump_field(obj): return {val_code}'
 
     # assemble function code
     code = func_tpl.format(val_code=val_code)
@@ -194,8 +195,8 @@ def _dump_field_function(field, field_name, many):
     return _make_function('dump_field', code, namespace)
 
 
-def _dump_fields_function(fields, ordered, many):
-    '''Return a customized function that dumps all specified fields.
+def _dump_fields_func(fields, ordered, many):
+    '''Return a customized function that dumps multiple fields.
 
     Args:
         fields: An ordered mapping of field names to fields.
@@ -207,7 +208,8 @@ def _dump_fields_function(fields, ordered, many):
             objects, otherwise it will expect a single object.
 
     Returns:
-        A custom dump_fields function.
+        A custom function that expects an object (or a collectionof objects
+        depending on ``many``), and returns multiple fields' values per object.
 
     '''
     # Get correct templates & namespace depending on "ordered" and "many" args
@@ -222,7 +224,7 @@ def _dump_fields_function(fields, ordered, many):
                 'def dump_fields(obj):\n'
                 '    return OrderedDict([{joined_entries}])'
             )
-        entry_tpl = '("{key}", {val_code})'
+        entry_tpl = '({field_name!r}, {val_code})'
         namespace = {'OrderedDict': OrderedDict}
     else:
         if many:
@@ -235,7 +237,7 @@ def _dump_fields_function(fields, ordered, many):
                 'def dump_fields(obj):\n'
                 '    return {{{joined_entries}}}'
             )
-        entry_tpl = '"{key}": {val_code}'
+        entry_tpl = '{field_name!r}: {val_code}'
         namespace = {}
 
     # one entry per field
@@ -243,17 +245,13 @@ def _dump_fields_function(fields, ordered, many):
 
     # iterate over fields to fill up entries
     for field_num, (field_name, field) in enumerate(fields.items()):
-        val_code, val_ns = _cns_field_value(field, field_name, field_num)
+        val_code, val_ns = _field_val_cns(field, field_name, field_num)
         namespace.update(val_ns)
 
-        # try to guard against code injection via quotes in key
-        key = str(field_name)
-        if '"' in key or "'" in key:
-            msg = 'Quotes are not allowed in field names: {}'
-            raise ValueError(msg.format(key))
-
         # add entry
-        entries.append(entry_tpl.format(key=key, val_code=val_code))
+        entries.append(
+            entry_tpl.format(field_name=field_name, val_code=val_code)
+        )
 
     # assemble function code
     code = func_tpl.format(joined_entries=', '.join(entries))
@@ -386,7 +384,12 @@ class SchemaMeta(type):
 
     @classmethod
     def __prepare__(metacls, name, bases):
-        '''Return an OrderedDict as the class namespace.'''
+        '''Return an OrderedDict as the class namespace.
+
+        This allows us to keep track of the order in which fields were defined
+        for a schema.
+
+        '''
         return OrderedDict()
 
 
@@ -486,55 +489,56 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         # add instance vars to self
         self._fields = fields
-        self._dump_field_functions = {}
+        self._dump_field_func_cache = {}  # dict of funcs dumping single fields
         self._ordered = ordered
         self._many = many
 
     @property
     def many(self):
-        '''Read-only property: does schema dump collections by default?'''
+        '''Read-only property: does the dump method expect collections?'''
         return self._many
 
     @property
     def ordered(self):
-        '''Read-only property: does schema dump ordered dicts?'''
+        '''Read-only property: does the dump method return ordered dicts?'''
         return self._ordered
 
     @util.reify
-    def _dump_function(self):
-        '''Return instance-specific dump function (reified).'''
-        with util.complain_about('Lazy creation of dump function'):
-            return _dump_fields_function(self._fields,
-                                         self._ordered, self._many)
+    def _dump_fields(self):
+        '''Return instance-specific dump function for all fields (reified).'''
+        with util.complain_about('Lazy creation of dump fields function'):
+            return _dump_fields_func(self._fields, self._ordered, self._many)
 
-    def _dump_field_function(self, field_name):
-        '''Return instance-specific dump function for a single field.'''
-        if field_name in self._dump_field_functions:
-            return self._dump_field_functions[field_name]
+    def _dump_field_func(self, field_name):
+        '''Return instance-specific dump function for a single field.
 
-        with util.complain_about('Lazy creation of dump function for field'):
-            f = _dump_field_function(self._fields[field_name],
-                                     field_name, self._many)
-            self._dump_field_functions[field_name] = f
-            return f
+        Functions are created when requested for the first time and get cached
+        for subsequent calls of this method.
+
+        '''
+        if field_name in self._dump_field_func_cache:
+            return self._dump_field_func_cache[field_name]
+
+        with util.complain_about('Lazy creation of dump field function'):
+            func = _dump_field_func(self._fields[field_name],
+                                   field_name, self._many)
+            self._dump_field_func_cache[field_name] = func
+            return func
 
     def dump(self, obj):
         '''Return a marshalled representation of obj.
 
         Args:
-            obj: The object (or collection of objects) to marshall.
-
-            many: Wether obj is a single object or a collection of objects. If
-                ``many`` is ``None``, the value of the instance's
-                :attr:`many` attribute is used.
+            obj: The object (or collection of objects, depending on the
+                schema's :attr:`many` property) to marshall.
 
         Returns:
             A representation of ``obj`` in the form of a JSON-serializable dict
-            (or :class:`collections.OrderedDict` if the Schema was created with
-            ``ordered==True``), with each entry corresponding to one of the
-            :class:`Schema`'s fields. (Or a list of such dicts in case a
-            collection of objects was marshalled)
+            (or :class:`collections.OrderedDict`, depending on the schema's
+            :attr:`ordered` property), with each entry corresponding to one of
+            the schema's fields. (Or a list of such dicts in case a collection
+            of objects was marshalled)
 
         '''
         # call the instance-specific dump function
-        return self._dump_function(obj)
+        return self._dump_fields(obj)
