@@ -1,5 +1,3 @@
-'''tests for schema.Schema.dump module'''
-
 from collections import OrderedDict
 from datetime import date, datetime
 
