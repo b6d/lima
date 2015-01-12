@@ -53,14 +53,13 @@ class KingSchemaEmbedClass(KnightSchema):
 
 class KingSchemaEmbedObject(KnightSchema):
     some_schema_object = KnightSchema(many=True)
-
     title = fields.String()
     subjects = fields.Embed(schema=some_schema_object)
 
 
-class SelfReferentialKingSchema(schema.Schema):
+class KingSchemaEmbedSelf(schema.Schema):
     name = fields.String()
-    boss = fields.Embed(schema=__name__ + '.SelfReferentialKingSchema',
+    boss = fields.Embed(schema=__name__ + '.KingSchemaEmbedSelf',
                         exclude='boss')
 
 
@@ -78,81 +77,112 @@ def knights():
     ]
 
 
-def test_simple_dump(king):
-    person_schema = PersonSchema()
+def test_dump_single_unordered(king):
+    person_schema = PersonSchema(many=False, ordered=False)
+    result = person_schema.dump(king)
     expected = {
         'title': 'King',
         'name': 'Arthur',
         'number': 1,
         'born': '0501-01-01'
     }
+    assert type(result) == dict
+    assert result == expected
 
-    assert person_schema.dump(king) == expected
+
+def test_dump_single_ordered(king):
+    person_schema = PersonSchema(many=False, ordered=True)
+    result = person_schema.dump(king)
+    expected = OrderedDict(
+        [
+            ('title', 'King'),
+            ('name', 'Arthur'),
+            ('number', 1),
+            ('born', '0501-01-01'),
+        ]
+    )
+    assert type(result) == OrderedDict
+    assert result == expected
 
 
-def test_simple_dump_exclude(king):
+def test_dump_many_unordered(knights):
+    person_schema = PersonSchema(many=True, ordered=False)
+    result = person_schema.dump(knights)
+    expected = [
+        dict(title='Sir', name='Bedevere', number=2, born='0502-02-02'),
+        dict(title='Sir', name='Lancelot', number=3, born='0503-03-03'),
+        dict(title='Sir', name='Galahad', number=4, born='0504-04-04'),
+    ]
+    assert all(type(x) == dict for x in result)
+    assert result == expected
+
+
+def test_dump_many_ordered(knights):
+    person_schema = PersonSchema(many=True, ordered=True)
+    result = person_schema.dump(knights)
+    expected = [
+        OrderedDict([('title', 'Sir'), ('name', 'Bedevere'),
+                     ('number', 2), ('born', '0502-02-02')]),
+        OrderedDict([('title', 'Sir'), ('name', 'Lancelot'),
+                     ('number', 3), ('born', '0503-03-03')]),
+        OrderedDict([('title', 'Sir'), ('name', 'Galahad'),
+                     ('number', 4), ('born', '0504-04-04')]),
+    ]
+    assert all(type(x) == OrderedDict for x in result)
+    assert result == expected
+
+
+def test_field_exclude_dump(king):
     person_schema = PersonSchema(exclude=['born'])
+    result = person_schema.dump(king)
     expected = {
         'title': 'King',
         'name': 'Arthur',
         'number': 1,
     }
+    assert result == expected
 
-    assert person_schema.dump(king) == expected
 
-
-def test_simple_dump_only(king):
+def test_field_only_dump(king):
     person_schema = PersonSchema(only=['name'])
+    result = person_schema.dump(king)
     expected = {
         'name': 'Arthur',
     }
-
-    assert person_schema.dump(king) == expected
+    assert result == expected
 
 
 def test_attr_field_dump(king):
     attr_schema = DifferentAttrSchema()
+    result = attr_schema.dump(king)
     expected = {
         'date_of_birth': '0501-01-01'
     }
-    assert attr_schema.dump(king) == expected
+    assert result == expected
 
 
 def test_getter_field_dump(king):
     getter_schema = GetterSchema()
+    result = getter_schema.dump(king)
     expected = {
         'full_name': 'King Arthur'
     }
-    assert getter_schema.dump(king) == expected
+    assert result == expected
 
 
 def test_constant_value_field_dump(king):
     constant_value_schema = ConstantValueSchema()
+    result = constant_value_schema.dump(king)
     expected = {
         'constant': '2014-10-20'
     }
-    assert constant_value_schema.dump(king) == expected
-
-
-def test_many_dump(knights):
-    multi_person_schema = PersonSchema(only=['name'], many=True)
-    expected = [
-        {'name': 'Bedevere'},
-        {'name': 'Lancelot'},
-        {'name': 'Galahad'},
-    ]
-    assert multi_person_schema.dump(knights) == expected
+    assert result == expected
 
 
 def test_dump_fail_on_unexpected_collection(knights):
-    multi_person_schema = PersonSchema(only=['name'], many=False)
-    expected = [
-        {'name': 'Bedevere'},
-        {'name': 'Lancelot'},
-        {'name': 'Galahad'},
-    ]
+    person_schema = PersonSchema(many=False)
     with pytest.raises(Exception):
-        multi_person_schema.dump(knights)
+        person_schema.dump(knights)
 
 
 @pytest.mark.parametrize('schema_cls',
@@ -160,7 +190,6 @@ def test_dump_fail_on_unexpected_collection(knights):
                           KingSchemaEmbedClass,
                           KingSchemaEmbedObject])
 def test_dump_embed_schema(schema_cls, king, knights):
-    '''Test with embed Schema specified as a String'''
     king_schema = schema_cls()
     king.subjects = knights
     expected = {
@@ -175,56 +204,28 @@ def test_dump_embed_schema(schema_cls, king, knights):
     assert king_schema.dump(king) == expected
 
 
-def test_dump_embed_schema_instance_double_kwargs_error(king, knights):
-    '''Test for ValueError when providing unnecssary kwargs.'''
+def test_dump_embed_schema_instance_double_kwargs_error():
 
-    class KnightSchema(schema.Schema):
-        name = fields.String()
+    class EmbedSchema(schema.Schema):
+        some_field = fields.String()
 
     embed_schema = KnightSchema(many=True)
 
-    class KingSchema(KnightSchema):
-        title = fields.String()
+    class EmbeddingSchema(schema.Schema):
+        another_field = fields.String()
         # here we provide a schema instance. the kwarg "many" is unnecessary
-        subjects = fields.Embed(schema=embed_schema, many=True)
+        incorrect_embed_field = fields.Embed(schema=embed_schema, many=True)
 
+    # the incorrect field is constructed lazily. we'll have to access it
     with pytest.raises(ValueError):
-        KingSchema.__fields__['subjects']._schema_inst
+        EmbeddingSchema.__fields__['incorrect_embed_field']._schema_inst
 
 
 def test_dump_embed_schema_self(king):
-    '''Test with embedded Schema specified as a String'''
-    king_schema = SelfReferentialKingSchema()
+    king_schema = KingSchemaEmbedSelf()
     king.boss = king
     expected = {
         'name': 'Arthur',
         'boss': {'name': 'Arthur'},
     }
     assert king_schema.dump(king) == expected
-
-
-def test_ordered(king):
-    '''Test dumping to OrderedDicts'''
-    person_schema_unordered = PersonSchema(ordered=False)
-    expected_unordered = {
-        'title': 'King',
-        'name': 'Arthur',
-        'number': 1,
-        'born': '0501-01-01',
-    }
-    person_schema_ordered = PersonSchema(ordered=True)
-    expected_ordered = OrderedDict(
-        [
-            ('title', 'King'),
-            ('name', 'Arthur'),
-            ('number', 1),
-            ('born', '0501-01-01'),
-        ]
-    )
-    result_unordered = person_schema_unordered.dump(king)
-    result_ordered = person_schema_ordered.dump(king)
-
-    assert result_unordered.__class__ == dict
-    assert result_ordered.__class__ == OrderedDict
-    assert result_unordered == expected_unordered
-    assert result_ordered == expected_ordered
