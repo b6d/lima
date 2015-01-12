@@ -725,3 +725,18 @@ class TestLazyDumpFunctionCreation:
         test_schema._dump_fields
         test_schema._dump_field_func('not;an-identifier')
         assert 'not;an-identifier' in test_schema._fields
+
+    def test_function_caching(self):
+        '''Test if lazily created functions are cached'''
+
+        class TestSchema(schema.Schema):
+            foo = fields.String()
+
+        test_schema = TestSchema()
+        fn1 = test_schema._dump_fields
+        fn2 = test_schema._dump_fields
+        assert fn1 is fn2  # after first eval, the same obj should be returned
+
+        fn1 = test_schema._dump_field_func('foo')
+        fn2 = test_schema._dump_field_func('foo')
+        assert fn1 is fn2  # after first eval, the same obj should be returned
