@@ -314,7 +314,7 @@ class Reference(_LinkedObjectField):
     Args:
         schema: The schema of the linked object (see :class:`Embed`).
 
-        field_name: The field of schema to act as reference to the linked object.
+        field_name: The schema field to act as reference to the linked object.
 
         attr: see :class:`Embed`.
 
