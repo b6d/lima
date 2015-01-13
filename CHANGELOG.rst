@@ -10,32 +10,40 @@ Changelog
     While unreleased, the changelog of lima 0.4 is itself subject to change.
 
 - **Breaking Change:** The ``Schema.dump`` method no longer supports the
-  ``many`` argument. Schema instances now either serialize collections of
-  objects or single objects, but not both.
+  ``many`` argument. This makes ``many`` consistent with ``ordered`` and
+  simplifies internals.
 
-- Add new field type ``fields.Reference``.
+- Improve support for serializing linked data:
 
-- Add read-only properties ``Schema.many`` and ``Schema.ordered``.
+    - Add new field type ``fields.Reference`` for references to linked objects.
 
-- Don't create docs for internal modules any more - those did clutter up the
-  documentation of the actual API.
+    - Add new name for ``fields.Nested``: ``fields.Embed``. Deprecate
+      ``fields.Nested`` in favour of ``fields.Embed``.
 
-- Implement lazy evaluation of some non-public schema and field attributes
-  (`Pyramid <http://docs.pylonsproject.org/docs/pyramid/en/latest/api/
-  decorator.html#pyramid.decorator.reify>`_ FTW). This means some things (like
-  custom dump functions for schema instances) are only evaluated if really
-  needed, but it also means that some errors might surface at a later time
-  (lima mentions this when raising such exceptions).
+- Add read-only properties ``many`` and ``ordered`` for schema objects.
+
+- Don't generate docs for internal modules any more - those did clutter up the
+  documentation of the actual API (the docstrings remain though).
+
+- Implement lazy evaluation and caching of some attributes (affects methods:
+  ``Schema.dump``, ``Embed.pack`` and ``Reference.pack``). This means stuff is
+  only evaluated if and when really needed, but it also means:
+
+    - The very first time data is dumped/packed by a Schema/Embed/Reference
+      object, there will be a tiny delay. Keep objects around to mitigate this
+      effect.
+
+    - Some errors might surface at a later time. lima mentions this when
+      raising exceptions though.
 
 - Allow quotes in field names.
 
 - Small speed improvement when serializing collections.
 
-- Deprecate ``fields.Nested`` in favour of ``fields.Embed``.
+- Remove deprecated field ``fields.type_mapping``. Use ``fields.TYPE_MAPPING``
+  instead.
 
-- Remove ``fields.type_mapping``. Use ``fields.TYPE_MAPPING`` instead.
-
-- Overall cleanup.
+- Overall cleanup, improvements and bug fixes.
 
 
 0.3.1 (2014-11-11)
