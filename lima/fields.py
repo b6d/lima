@@ -233,7 +233,7 @@ class _LinkedObjectField(Field):
 
 
 class Embed(_LinkedObjectField):
-    '''A Field to embed linked object(s).
+    '''A Field to embed linked objects.
 
     Args:
         schema: The schema of the linked object. This can be specified via a
@@ -254,10 +254,6 @@ class Embed(_LinkedObjectField):
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
             constructor when the time has come to instance it. Must be empty if
             ``schema`` is a :class:`lima.schema.Schema` object.
-
-    The schema of the linked object associated with a field of this type will
-    be lazily evaluated the first time it is needed. This means that incorrect
-    arguments might produce errors at a time after the field's instantiation.
 
     Examples: ::
 
@@ -300,31 +296,35 @@ class Embed(_LinkedObjectField):
             val: The linked object to embed.
 
         Returns:
-            The marshalled representation of val determined using the the
-            associated schema object's (internal) dump fields *function* - or
-            None if ``val`` is None.
+            The marshalled representation of ``val`` (or ``None`` if ``val`` is
+            ``None``).
 
-        Note that overriding the associated schema's
-        :meth:`~lima.schema.Schema.dump` *method* does not affect the result of
-        this method. This behaviour might change in the future.
+        Note that the return value is determined using an (internal) dump
+        fields *function* of the associated schema object. This means that
+        overriding the associated schema's :meth:`~lima.schema.Schema.dump`
+        *method* has no effect on the result of this method.
 
         '''
         return self._pack_func(val) if val is not None else None
 
 
 class Reference(_LinkedObjectField):
-    '''A Field to reference linked object(s).
+    '''A Field to reference linked objects.
 
     Args:
-        schema: The schema of the linked object (see :class:`Embed`).
 
-        field_name: The schema field to act as reference to the linked object.
+        schema: A schema for the linked object (see :class:`Embed` for details
+            on how to specify this schema). One field of this schema will act
+            as reference to the linked object.
 
-        attr: see :class:`Embed`.
+        field_name: The name of the field to act as reference to the linked
+            object.
 
-        get: see :class:`Embed`.
+        attr: see :class:`Field`.
 
-        val: see :class:`Embed`.
+        get: see :class:`Field`.
+
+        val: see :class:`Field`.
 
         kwargs: see :class:`Embed`.
 
@@ -347,15 +347,20 @@ class Reference(_LinkedObjectField):
         return self._schema_inst._dump_field_func(self._field_name)
 
     def pack(self, val):
-        '''Return the marshalled representation of val.
+        '''Return value of reference field of marshalled representation of val.
 
         Args:
-            val: The nested object to marshall.
+            val: The nested object to get the reference to.
 
         Returns:
-            The marshalled representation of val, determined using the the
-            associated schema object's (internal) dump field *function* - or
-            None if ``val`` is None.
+            The value of the reference-field of the marshalled representation
+            of val (see ``field_name`` argument of constructor) or ``None`` if
+            ``val`` is ``None``.
+
+        Note that the return value is determined using an (internal) dump field
+        *function* of the associated schema object. This means that overriding
+        the associated schema's :meth:`~lima.schema.Schema.dump` *method* has
+        no effect on the result of this method.
 
         '''
         return self._pack_func(val) if val is not None else None
