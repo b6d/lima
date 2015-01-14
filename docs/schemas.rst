@@ -75,9 +75,9 @@ exclusive):
 .. warning::
 
     Having to provide ``"only"`` on Schema definition hints at bad design - why
-    would you add a lot of fields just to remove them quickly afterwards? Have
-    a look at :ref:`schema_objects` for the preferred way to selectively
-    remove fields.
+    would you add a lot of fields just to remove all but one of them
+    afterwards? Have a look at :ref:`schema_objects` for the preferred way to
+    selectively remove fields.
 
 And finally, we can't just *exclude* fields, we can *include* them too. So
 here is a user schema with fields provided via ``__lima_args__``:
