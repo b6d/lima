@@ -116,7 +116,7 @@ Hyperlinks
 ==========
 
 One application of :class:`~lima.fields.Reference` is linking to ressources via
-hyperlinks in RESTful Web Services. Here is a quick sketch:
+hyperlinks in RESTful Web services. Here is a quick sketch:
 
 .. code-block:: python
     :emphasize-lines: 6,12,18
