@@ -2,12 +2,8 @@
 Changelog
 =========
 
-0.4 (unreleased)
+0.4 (2015-01-15)
 ================
-
-.. note::
-
-    While unreleased, the changelog of lima 0.4 is itself subject to change.
 
 - **Breaking Change:** The ``Schema.dump`` method no longer supports the
   ``many`` argument. This makes ``many`` consistent with ``ordered`` and
