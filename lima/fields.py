@@ -317,8 +317,7 @@ class Reference(_LinkedObjectField):
             on how to specify this schema). One field of this schema will act
             as reference to the linked object.
 
-        field_name: The name of the field to act as reference to the linked
-            object.
+        field: The name of the field to act as reference to the linked object.
 
         attr: see :class:`Field`.
 
@@ -333,18 +332,18 @@ class Reference(_LinkedObjectField):
     def __init__(self,
                  *,
                  schema,
-                 field_name,
+                 field,
                  attr=None,
                  get=None,
                  val=None,
                  **kwargs):
         super().__init__(schema=schema, attr=attr, get=get, val=val, **kwargs)
-        self._field_name = field_name
+        self._field = field
 
     @util.reify
     def _pack_func(self):
         '''Return the associated schema's dump field *function* (reified).'''
-        return self._schema_inst._dump_field_func(self._field_name)
+        return self._schema_inst._dump_field_func(self._field)
 
     def pack(self, val):
         '''Return value of reference field of marshalled representation of val.
@@ -354,7 +353,7 @@ class Reference(_LinkedObjectField):
 
         Returns:
             The value of the reference-field of the marshalled representation
-            of val (see ``field_name`` argument of constructor) or ``None`` if
+            of val (see ``field`` argument of constructor) or ``None`` if
             ``val`` is ``None``.
 
         Note that the return value is determined using an (internal) dump field

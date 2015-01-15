@@ -101,7 +101,7 @@ its ISBN like this:
     :emphasize-lines: 2,8
 
     class ReferencingReviewSchema(Schema):
-        book = fields.Reference(schema=BookSchema, field_name='isbn')
+        book = fields.Reference(schema=BookSchema, field='isbn')
         rating = fields.Integer()
         text = fields.String()
 
@@ -132,7 +132,7 @@ hyperlinks in RESTful Web Services. Here is a quick sketch:
         title = fields.String()
 
     class ReviewSchema(Schema):
-        book = fields.Reference(schema=BookSchema, field_name='url')
+        book = fields.Reference(schema=BookSchema, field='url')
         rating = fields.Integer()
         text = fields.String()
 

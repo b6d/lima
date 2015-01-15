@@ -226,7 +226,7 @@ class TestReference:
         [SomeSchema(), SomeSchema, __name__ + '.SomeSchema']
     )
     def test_pack(self, schema_arg):
-        field = fields.Reference(schema=schema_arg, field_name='number')
+        field = fields.Reference(schema=schema_arg, field='number')
         result = field.pack(SomeClass('one', 1))
         expected = 1
         assert result == expected
@@ -236,15 +236,15 @@ class TestReference:
         [
             fields.Reference(
                 schema=SomeSchema(many=True, only='number'),
-                field_name = 'number'
+                field = 'number'
             ),
             fields.Reference(
                 schema=SomeSchema, many=True, only='number',
-                field_name = 'number'
+                field = 'number'
             ),
             fields.Reference(
                 schema=__name__ + '.SomeSchema', many=True, only='number',
-                field_name = 'number'
+                field = 'number'
             )
         ]
     )
@@ -258,19 +258,19 @@ class TestReference:
         [
             fields.Reference(
                 schema=SomeSchema(many=True, exclude='number'),
-                field_name = 'number'
+                field = 'number'
             ),
             fields.Reference(
                 schema=SomeSchema, many=True, exclude='number',
-                field_name = 'number'
+                field = 'number'
             ),
             fields.Reference(
                 schema=__name__ + '.SomeSchema', many=True, exclude='number',
-                field_name = 'number'
+                field = 'number'
             )
         ]
     )
-    def test_fail_on_missing_field_name(self, field):
+    def test_fail_on_missing_field_arg(self, field):
         # field 'number' is no field of the field's associated schema instance since it
         # was excluded
         with pytest.raises(KeyError):
