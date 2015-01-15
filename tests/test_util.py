@@ -3,6 +3,8 @@ from collections import OrderedDict
 
 import pytest
 
+from lima import fields
+from lima import schema
 from lima import util
 
 
@@ -40,6 +42,34 @@ def test_complain_about():
         with util.complain_about('bar'):
             assert False
         assert str(e).startswith('bar')
+
+
+# Adapted from Pyramid's test suite, licensed under the RPL
+class TestReify:
+    '''Class collecting tests of helper functions.'''
+
+    class Dummy:
+        pass
+
+    def test__get__with_instance(self):
+        def wrapee(inst):
+            return 42
+        decorated = util.reify(wrapee)
+        inst = TestReify.Dummy()
+        result = decorated.__get__(instance=inst, owner=...)
+        assert result == 42
+        assert inst.__dict__['wrapee'] == 42
+
+    def test__get__without_instance(self):
+        decorated = util.reify(None)
+        result = decorated.__get__(instance=None, owner=...)
+        assert result == decorated
+
+    def test__doc__copied(self):
+        def wrapee(inst):
+            '''My docstring'''
+        decorated = util.reify(wrapee)
+        assert decorated.__doc__ == 'My docstring'
 
 
 def test_vector_context():

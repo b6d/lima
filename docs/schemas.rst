@@ -75,9 +75,9 @@ exclusive):
 .. warning::
 
     Having to provide ``"only"`` on Schema definition hints at bad design - why
-    would you add a lot of fields just to remove them quickly afterwards? Have
-    a look at :ref:`schema_objects` for the preferred way to selectively
-    remove fields.
+    would you add a lot of fields just to remove all but one of them
+    afterwards? Have a look at :ref:`schema_objects` for the preferred way to
+    selectively remove fields.
 
 And finally, we can't just *exclude* fields, we can *include* them too. So
 here is a user schema with fields provided via ``__lima_args__``:
@@ -269,18 +269,10 @@ Consider this:
     ]
 
 Instead of looping over this collection ourselves, we can ask the schema object
-to do this for us - either for a single call (by specifying ``many=True`` to
-the :meth:`dump` method), or for every call of :meth:`dump` (by specifying
-``many=True`` to the schema's constructor):
+to do this for us by specifying ``many=True`` to the schema's constructor):
 
 .. code-block:: python
-    :emphasize-lines: 2,7
-
-    person_schema = PersonSchema(only='last_name')
-    person_schema.dump(persons, many=True)
-    # [{'last_name': 'Hemingway'},
-    #  {'last_name': 'Woolf'},
-    #  {'last_name': 'Zweig'}]
+    :emphasize-lines: 1
 
     many_persons_schema =  PersonSchema(only='last_name', many=True)
     many_persons_schema.dump(persons)

@@ -35,7 +35,7 @@ def _fields_from_bases(bases):
 def _fields_include(fields, include):
     '''Return a copy of fields with fields in include included.'''
     util.ensure_mapping(include)
-    util.ensure_only_instances_of(include, str)
+    util.ensure_only_instances_of(include.keys(), str)
     util.ensure_only_instances_of(include.values(), abc.FieldABC)
     result = fields.copy()
     result.update(include)
@@ -46,22 +46,14 @@ def _fields_exclude(fields, remove):
     '''Return a copy of fields with fields mentioned in exclude missing.'''
     util.ensure_only_instances_of(remove, str)
     util.ensure_subset_of(remove, fields)
-    result = OrderedDict()
-    for k, v in fields.items():
-        if k not in remove:
-            result[k] = v
-    return result
+    return OrderedDict([(k, v) for k, v in fields.items() if k not in remove])
 
 
 def _fields_only(fields, only):
     '''Return a copy of fields containing only fields mentioned in only.'''
     util.ensure_only_instances_of(only, str)
     util.ensure_subset_of(only, fields)
-    result = OrderedDict()
-    for k, v in fields.items():
-        if k in only:
-            result[k] = v
-    return result
+    return OrderedDict([(k, v) for k, v in fields.items() if k in only])
 
 
 def _mangle_name(name):
@@ -79,6 +71,193 @@ def _mangle_name(name):
     if before not in mapping:
         return name
     return mapping[before] + after
+
+
+def _make_function(name, code, globals_=None):
+    '''Return a function created by executing a code string in a new namespace.
+
+    This is not much more than a wrapper around :func:`exec`.
+
+    Args:
+        name: The name of the function to create. Must match the function name
+            in ``code``.
+
+        code: A String containing the function definition code. The name of the
+            function must match ``name``.
+
+        globals_: A dict of globals to mix into the new function's namespace.
+            ``__builtins__`` must be provided explicitly if required.
+
+    .. warning:
+
+        All pitfalls of using :func:`exec` apply to this function as well.
+
+    '''
+    namespace = dict(__builtins__={})
+    if globals_:
+        namespace.update(globals_)
+    exec(code, namespace)
+    return namespace[name]
+
+
+def _field_val_cns(field, field_name, field_num):
+    '''Return (code, namespace)-tuple for determining a field's value.
+
+    Args:
+        field: A :class:`lima.fields.Field` instance.
+
+        field_name: The name (key) of the field.
+
+        field_num: A schema-wide unique number for the field
+
+    Returns:
+        A tuple consisting of: a) a fragment of Python code to determine the
+        field's value for an object called ``obj`` and b) a namespace dict
+        containing the objects necessary for this code fragment to work.
+
+    For a field ``myfield`` that has a ``pack`` and a ``get`` callable defined,
+    the output of this function could look something like this:
+
+    .. code-block:: python
+
+        (
+            'pack3(get3(obj))',  # the code
+            {'get3': myfield.get, 'pack3': myfield.pack}  # the namespace
+        )
+    '''
+    namespace = {}
+    if hasattr(field, 'val'):
+        # add constant-field-value-shortcut to namespace
+        name = 'val{}'.format(field_num)
+        namespace[name] = field.val
+
+        # later, get value using this shortcut
+        val_code = name
+
+    elif hasattr(field, 'get'):
+        # add getter-shortcut to namespace
+        name = 'get{}'.format(field_num)
+        namespace[name] = field.get
+
+        # later, get value by calling this shortcut
+        val_code = '{}(obj)'.format(name)
+
+    else:
+        # neither constant val nor getter: try to get value via attr
+        # (if attr is not specified, use field name as attr)
+        obj_attr = getattr(field, 'attr', field_name)
+
+        if not str.isidentifier(obj_attr) or keyword.iskeyword(obj_attr):
+            msg = 'Not a valid attribute name: {!r}'
+            raise ValueError(msg.format(obj_attr))
+
+        # later, get value using this attr
+        val_code = 'obj.{}'.format(obj_attr)
+
+    if hasattr(field, 'pack'):
+        # add pack-shortcut to namespace
+        name = 'pack{}'.format(field_num)
+        namespace[name] = field.pack
+
+        # later, pass field value to this shortcut
+        val_code = '{}({})'.format(name, val_code)
+
+    return val_code, namespace
+
+
+def _dump_field_func(field, field_name, many):
+    '''Return a customized function that dumps a single field.
+
+    Args:
+        field: The field.
+
+        field_name: The name (key) of the field.
+
+        many: If True(ish), the resulting function will expect collections of
+            objects, otherwise it will expect a single object.
+
+    Returns:
+        A custom function that expects an object (or a collection of objects
+        depending on ``many``), and returns a single field's value per object.
+
+    '''
+    val_code, namespace = _field_val_cns(field, field_name, 0)
+
+    if many:
+        func_tpl = 'def dump_field(objs): return [{val_code} for obj in objs]'
+    else:
+        func_tpl = 'def dump_field(obj): return {val_code}'
+
+    # assemble function code
+    code = func_tpl.format(val_code=val_code)
+
+    # finally create and return function
+    return _make_function('dump_field', code, namespace)
+
+
+def _dump_fields_func(fields, ordered, many):
+    '''Return a customized function that dumps multiple fields.
+
+    Args:
+        fields: An ordered mapping of field names to fields.
+
+        ordered: If True(ish), the resulting function will return OrderedDict
+            objects, otherwise it will return ordinary dicts.
+
+        many: If True(ish), the resulting function will expect collections of
+            objects, otherwise it will expect a single object.
+
+    Returns:
+        A custom function that expects an object (or a collectionof objects
+        depending on ``many``), and returns multiple fields' values per object.
+
+    '''
+    # Get correct templates & namespace depending on "ordered" and "many" args
+    if ordered:
+        if many:
+            func_tpl = (
+                'def dump_fields(objs):\n'
+                '    return [OrderedDict([{joined_entries}]) for obj in objs]'
+            )
+        else:
+            func_tpl = (
+                'def dump_fields(obj):\n'
+                '    return OrderedDict([{joined_entries}])'
+            )
+        entry_tpl = '({field_name!r}, {val_code})'
+        namespace = {'OrderedDict': OrderedDict}
+    else:
+        if many:
+            func_tpl = (
+                'def dump_fields(objs):\n'
+                '    return [{{{joined_entries}}} for obj in objs]'
+            )
+        else:
+            func_tpl = (
+                'def dump_fields(obj):\n'
+                '    return {{{joined_entries}}}'
+            )
+        entry_tpl = '{field_name!r}: {val_code}'
+        namespace = {}
+
+    # one entry per field
+    entries = []
+
+    # iterate over fields to fill up entries
+    for field_num, (field_name, field) in enumerate(fields.items()):
+        val_code, val_ns = _field_val_cns(field, field_name, field_num)
+        namespace.update(val_ns)
+
+        # add entry
+        entries.append(
+            entry_tpl.format(field_name=field_name, val_code=val_code)
+        )
+
+    # assemble function code
+    code = func_tpl.format(joined_entries=', '.join(entries))
+
+    # finally create and return function
+    return _make_function('dump_fields', code, namespace)
 
 
 # Schema Metaclass ############################################################
@@ -205,7 +384,12 @@ class SchemaMeta(type):
 
     @classmethod
     def __prepare__(metacls, name, bases):
-        '''Return an OrderedDict as the class namespace.'''
+        '''Return an OrderedDict as the class namespace.
+
+        This allows us to keep track of the order in which fields were defined
+        for a schema.
+
+        '''
         return OrderedDict()
 
 
@@ -234,7 +418,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
 
         ordered: An optional boolean indicating if the :meth:`Schema.dump`
             method should output :class:`collections.OrderedDict` objects
-            instead of simple :class:`dict` objects.  Defaults to ``False``.
+            instead of simple :class:`dict` objects. Defaults to ``False``.
             This does not influence how nested fields are serialized.
 
         many: An optional boolean indicating if the new Schema will be
@@ -303,123 +487,61 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             with util.complain_about('only'):
                 fields = _fields_only(fields, util.vector_context(only))
 
+        # add instance vars to self
         self._fields = fields
+        self._dump_field_func_cache = {}  # dict of funcs dumping single fields
         self._ordered = ordered
-        self.many = many
+        self._many = many
 
-        # get code for the customized dump function
-        code = self._get_dump_function_code()
+    @property
+    def many(self):
+        '''Read-only property: does the dump method expect collections?'''
+        return self._many
 
-        # this defines _dump_function in self's namespace
-        exec(code, globals(), self.__dict__)
+    @property
+    def ordered(self):
+        '''Read-only property: does the dump method return ordered dicts?'''
+        return self._ordered
 
-    def _get_dump_function_code(self):
-        '''Get code for a customized dump function.'''
-        # note that even _though dump_function might *look* like a method at
-        # first glance, it is *not*, since it will tied to a specific Schema
-        # instance instead of to the Schema class like a method would be. This
-        # means that ten Schema objects will have ten separate dump functions
-        # associated with them.
+    @util.reify
+    def _dump_fields(self):
+        '''Return instance-specific dump function for all fields (reified).'''
+        with util.complain_about('Lazy creation of dump fields function'):
+            return _dump_fields_func(self._fields, self._ordered, self._many)
 
-        # get correct templates
-        if self._ordered:
-            func_tpl = textwrap.dedent(
-                '''\
-                def _dump_function(schema, obj):
-                    return OrderedDict([
-                        {contents}
-                    ])
-                '''
-            )
-            entry_tpl = '("{key}", {get_val})'
-        else:
-            func_tpl = textwrap.dedent(
-                '''\
-                def _dump_function(schema, obj):
-                    return {{
-                        {contents}
-                    }}
-                '''
-            )
-            entry_tpl = '"{key}": {get_val}'
+    def _dump_field_func(self, field_name):
+        '''Return instance-specific dump function for a single field.
 
-        # one entry per field
-        entries = []
+        Functions are created when requested for the first time and get cached
+        for subsequent calls of this method.
 
-        # iterate over fields to fill up entries
-        for field_num, (field_name, field) in enumerate(self._fields.items()):
+        '''
+        if field_name in self._dump_field_func_cache:
+            return self._dump_field_func_cache[field_name]
 
-            if hasattr(field, 'val'):
-                # add constant-field-value-shortcut to self
-                val_name = '__val_{}'.format(field_num)
-                setattr(self, val_name, field.val)
+        with util.complain_about('Lazy creation of dump field function'):
+            func = _dump_field_func(self._fields[field_name],
+                                   field_name, self._many)
+            self._dump_field_func_cache[field_name] = func
+            return func
 
-                # later, get value using this shortcut
-                get_val = 'schema.{}'.format(val_name)
-
-            elif hasattr(field, 'get'):
-                # add getter-shortcut to self
-                getter_name = '__get_{}'.format(field_num)
-                setattr(self, getter_name, field.get)
-
-                # later, get value by calling getter-shortcut
-                get_val = 'schema.{}(obj)'.format(getter_name)
-
-            else:
-                # neither constant val nor getter: try to get value via attr
-                # (if no attr name is specified, use field name as attr name)
-                attr = getattr(field, 'attr', field_name)
-
-                if not str.isidentifier(attr) or keyword.iskeyword(attr):
-                    msg = 'Not a valid attribute name: {!r}'
-                    raise ValueError(msg.format(attr))
-
-                # later, get value using attr
-                get_val = 'obj.{}'.format(attr)
-
-            if hasattr(field, 'pack'):
-                # add pack-shortcut to self
-                packer_name = '__pack_{}'.format(field_num)
-                setattr(self, packer_name, field.pack)
-
-                # later, wrap pass result of get_val to pack-shortcut
-                get_val = 'schema.{}({})'.format(packer_name, get_val)
-
-            # try to guard against code injection via quotes in key
-            key = str(field_name)
-            if '"' in key or "'" in key:
-                msg = 'Quotes are not allowed in field names: {}'
-                raise ValueError(msg.format(key))
-
-            # add entry
-            entries.append(entry_tpl.format(key=key, get_val=get_val))
-
-        sep = ',\n        '
-        code = func_tpl.format(contents=sep.join(entries))
-        return code
-
-    def dump(self, obj, *, many=None):
+    def dump(self, obj):
         '''Return a marshalled representation of obj.
 
         Args:
-            obj: The object (or collection of objects) to marshall.
-
-            many: Wether obj is a single object or a collection of objects. If
-                ``many`` is ``None``, the value of the instance's
-                :attr:`many` attribute is used.
+            obj: The object (or collection of objects, depending on the
+                schema's :attr:`many` property) to marshall.
 
         Returns:
             A representation of ``obj`` in the form of a JSON-serializable dict
-            (or :class:`collections.OrderedDict` if the Schema was created with
-            ``ordered==True``), with each entry corresponding to one of the
-            :class:`Schema`'s fields. (Or a list of such dicts in case a
-            collection of objects was marshalled)
+            (or :class:`collections.OrderedDict`, depending on the schema's
+            :attr:`ordered` property), with each entry corresponding to one of
+            the schema's fields. (Or a list of such dicts in case a collection
+            of objects was marshalled)
+
+        .. versionchanged:: 0.4
+            Removed the ``many`` parameter of this method.
 
         '''
-        dump_function = self._dump_function
-        if many is None:
-            many = self.many
-        if many:
-            return [dump_function(self, o) for o in obj]
-        else:
-            return dump_function(self, obj)
+        # call the instance-specific dump function
+        return self._dump_fields(obj)

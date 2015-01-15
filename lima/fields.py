@@ -4,6 +4,7 @@ import datetime
 
 from lima import abc
 from lima import registry
+from lima import util
 
 
 class Field(abc.FieldABC):
@@ -139,117 +140,238 @@ class DateTime(Field):
         return val.isoformat() if val is not None else None
 
 
-class Nested(Field):
-    '''A Field referencing another object with it's respective schema.
+class _LinkedObjectField(Field):
+    '''A base class for fields that represent linked objects.
+
+    This is to be considered an abstract class. Concrete implementations will
+    have to define their own :meth:`pack` methods, utilizing the associated
+    schema of the linked object.
 
     Args:
-        schema: The schema of the referenced object. This can be specified via
-            a schema *object,* a schema *class* (that will get instantiated
-            immediately) or the qualified *name* of a schema class (for when
-            the named schema has not been defined at the time of the
-            :class:`Nested` object's creation). If two or more schema classes
-            with the same name exist in different modules, the schema class
-            name has to be fully module-qualified (see the :ref:`entry on class
-            names <on_class_names>` for clarification of these concepts).
-            Schemas defined within a local namespace can not be referenced by
-            name.
+        schema: The schema of the linked object. This can be specified via a
+            schema *object,* a schema *class* or the qualified *name* of a
+            schema class (for when the named schema has not been defined at the
+            time of instantiation. If two or more schema classes with the same
+            name exist in different modules, the schema class name has to be
+            fully module-qualified (see the :ref:`entry on class names
+            <on_class_names>` for clarification of these concepts). Schemas
+            defined within a local namespace can not be referenced by name.
 
-        attr: The optional name of the corresponding attribute.
+        attr: See :class:`Field`.
 
-        get: An optional getter function accepting an object as its only
-            parameter and returning the field value.
+        get: See :class:`Field`.
 
-        val: An optional constant value for the field.
+        val: See :class:`Field`.
 
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
             constructor when the time has come to instance it. Must be empty if
             ``schema`` is a :class:`lima.schema.Schema` object.
 
-    .. versionadded:: 0.3
-        The ``val`` parameter.
-
-    Raises:
-        ValueError: If ``kwargs`` are specified even if ``schema`` is a
-            :class:`lima.schema.Schema` *object.*
-
-    Examples: ::
-
-        # refer to PersonSchema class
-        author = Nested(schema=PersonSchema)
-
-        # refer to PersonSchema class with additional params
-        artists = Nested(schema=PersonSchema, exclude='email', many=True)
-
-        # refer to PersonSchema object
-        author = Nested(schema=PersonSchema())
-
-        # refer to PersonSchema object with additional params
-        # (note that Nested() gets no kwargs)
-        artists = Nested(schema=PersonSchema(exclude='email', many=true))
-
-        # refer to PersonSchema per name
-        author = Nested(schema='PersonSchema')
-
-        # refer to PersonSchema per name with additional params
-        author = Nested(schema='PersonSchema', exclude='email', many=True)
-
-        # refer to PersonSchema per module-qualified name
-        # (in case of ambiguity)
-        author = Nested(schema='project.persons.PersonSchema')
-
-        # specify attr name as well
-        user = Nested(attr='login_user', schema=PersonSchema)
+    The schema of the linked object associated with a field of this type will
+    be lazily evaluated the first time it is needed. This means that incorrect
+    arguments might produce errors at a time after the field's instantiation.
 
     '''
     def __init__(self, *, schema, attr=None, get=None, val=None, **kwargs):
         super().__init__(attr=attr, get=get, val=val)
 
-        # in case schema is a Schema object
-        if isinstance(schema, abc.SchemaABC):
-            if kwargs:
-                msg = ('No keyword args must be supplied'
-                       'if schema is a Schema object.')
-                raise ValueError(msg)
-            self.schema_inst = schema
+        # those will be evaluated later on (in _schema_inst)
+        self._schema_arg = schema
+        self._schema_kwargs = kwargs
 
-        # in case schema is a schema class
-        elif isinstance(schema, type) and issubclass(schema, abc.SchemaABC):
-            self.schema_inst = schema(**kwargs)
+    @util.reify
+    def _schema_inst(self):
+        '''Determine and return the associated Schema instance (reified).
 
-        # in case schema is a schema name: save args for later instantiation
-        elif isinstance(schema, str):
-            self.schema_inst = None
-            self.schema_name = schema
-            self.schema_kwargs = kwargs
+        If no associated Schema instance exists at call time (because only a
+        Schema class name was supplied to the constructor), find the Schema
+        class in the global registry and instantiate it.
 
-        # otherwise fail
-        else:
-            msg = 'Illegal type for schema param: {}'
+        Returns:
+            A schema instance for the linked object.
+
+        Raises:
+            ValueError: If ``kwargs`` were specified to the field constructor
+                even if a :class:`lima.schema.Schema` *instance* was provided
+                as the ``schema`` arg.
+
+            TypeError: If the ``schema`` arg provided to the field constructor
+                has the wrong type.
+
+        '''
+        with util.complain_about('Lazy evaluation of schema instance'):
+
+            # those were supplied to field constructor
+            schema = self._schema_arg
+            kwargs = self._schema_kwargs
+
+            # in case schema is a Schema object
+            if isinstance(schema, abc.SchemaABC):
+                if kwargs:
+                    msg = ('No additional keyword args must be '
+                           'supplied to field constructor if '
+                           'schema already is a Schema object.')
+                    raise ValueError(msg)
+                return schema
+
+            # in case schema is a schema class
+            elif (isinstance(schema, type) and
+                  issubclass(schema, abc.SchemaABC)):
+                return schema(**kwargs)
+
+            # in case schema is a string
+            elif isinstance(schema, str):
+                cls = registry.global_registry.get(schema)
+                return cls(**kwargs)
+
+            # otherwise fail
+            msg = 'schema arg supplied to constructor has illegal type ({})'
             raise TypeError(msg.format(type(schema)))
 
     def pack(self, val):
-        '''Return the output of the referenced object's schema's dump method.
+        raise NotImplementedError
 
-        If the referenced object's schema was specified by name at the
-        :class:`Nested` field's creation, this is the time when this schema is
-        instantiated (this is done only once).
+
+class Embed(_LinkedObjectField):
+    '''A Field to embed linked objects.
+
+    Args:
+        schema: The schema of the linked object. This can be specified via a
+            schema *object,* a schema *class* or the qualified *name* of a
+            schema class (for when the named schema has not been defined at the
+            time of instantiation. If two or more schema classes with the same
+            name exist in different modules, the schema class name has to be
+            fully module-qualified (see the :ref:`entry on class names
+            <on_class_names>` for clarification of these concepts). Schemas
+            defined within a local namespace can not be referenced by name.
+
+        attr: See :class:`Field`.
+
+        get: See :class:`Field`.
+
+        val: See :class:`Field`.
+
+        kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
+            constructor when the time has come to instance it. Must be empty if
+            ``schema`` is a :class:`lima.schema.Schema` object.
+
+    Examples: ::
+
+        # refer to PersonSchema class
+        author = Embed(schema=PersonSchema)
+
+        # refer to PersonSchema class with additional params
+        artists = Embed(schema=PersonSchema, exclude='email', many=True)
+
+        # refer to PersonSchema object
+        author = Embed(schema=PersonSchema())
+
+        # refer to PersonSchema object with additional params
+        # (note that Embed() itself gets no kwargs)
+        artists = Embed(schema=PersonSchema(exclude='email', many=true))
+
+        # refer to PersonSchema per name
+        author = Embed(schema='PersonSchema')
+
+        # refer to PersonSchema per name with additional params
+        author = Embed(schema='PersonSchema', exclude='email', many=True)
+
+        # refer to PersonSchema per module-qualified name
+        # (in case of ambiguity)
+        author = Embed(schema='project.persons.PersonSchema')
+
+        # specify attr name as well
+        user = Embed(attr='login_user', schema=PersonSchema)
+
+    '''
+    @util.reify
+    def _pack_func(self):
+        '''Return the associated schema's dump fields *function* (reified).'''
+        return self._schema_inst._dump_fields
+
+    def pack(self, val):
+        '''Return the marshalled representation of val.
 
         Args:
-            val: The nested object to convert.
+            val: The linked object to embed.
 
         Returns:
-            The output of the referenced :class:`lima.schema.Schema`'s
-            :meth:`lima.schema.Schema.dump` method.
+            The marshalled representation of ``val`` (or ``None`` if ``val`` is
+            ``None``).
+
+        Note that the return value is determined using an (internal) dump
+        fields *function* of the associated schema object. This means that
+        overriding the associated schema's :meth:`~lima.schema.Schema.dump`
+        *method* has no effect on the result of this method.
 
         '''
-        # if schema_inst doesn't exist yet (because a schema class name was
-        # supplied to the constructor), find the schema class in the global
-        # registry and instantiate it.
-        if not self.schema_inst:
-            cls = registry.global_registry.get(self.schema_name)
-            self.schema_inst = cls(**self.schema_kwargs)
+        return self._pack_func(val) if val is not None else None
 
-        return self.schema_inst.dump(val) if val is not None else None
+
+class Reference(_LinkedObjectField):
+    '''A Field to reference linked objects.
+
+    Args:
+
+        schema: A schema for the linked object (see :class:`Embed` for details
+            on how to specify this schema). One field of this schema will act
+            as reference to the linked object.
+
+        field: The name of the field to act as reference to the linked object.
+
+        attr: see :class:`Field`.
+
+        get: see :class:`Field`.
+
+        val: see :class:`Field`.
+
+        kwargs: see :class:`Embed`.
+
+
+    '''
+    def __init__(self,
+                 *,
+                 schema,
+                 field,
+                 attr=None,
+                 get=None,
+                 val=None,
+                 **kwargs):
+        super().__init__(schema=schema, attr=attr, get=get, val=val, **kwargs)
+        self._field = field
+
+    @util.reify
+    def _pack_func(self):
+        '''Return the associated schema's dump field *function* (reified).'''
+        return self._schema_inst._dump_field_func(self._field)
+
+    def pack(self, val):
+        '''Return value of reference field of marshalled representation of val.
+
+        Args:
+            val: The nested object to get the reference to.
+
+        Returns:
+            The value of the reference-field of the marshalled representation
+            of val (see ``field`` argument of constructor) or ``None`` if
+            ``val`` is ``None``.
+
+        Note that the return value is determined using an (internal) dump field
+        *function* of the associated schema object. This means that overriding
+        the associated schema's :meth:`~lima.schema.Schema.dump` *method* has
+        no effect on the result of this method.
+
+        '''
+        return self._pack_func(val) if val is not None else None
+
+
+Nested = Embed
+'''A Field to embed linked object(s)
+
+:class:`Nested` is the old name of class :class:`Embed`.
+
+.. deprecated:: 0.4
+    Will be removed in 0.5. Use :class:`Embed` instead'''
 
 
 TYPE_MAPPING = {
@@ -263,12 +385,4 @@ TYPE_MAPPING = {
 '''A mapping of native Python types to :class:`Field` classes.
 
 This can be used to automatically create fields for objects you know the
-attribute's types of.
-
-'''
-type_mapping = TYPE_MAPPING
-'''An alias for :attr:`TYPE_MAPPING`.
-
-.. deprecated:: 0.3
-    Will be removed in 0.4. Use :attr:`TYPE_MAPPING` instead.
-'''
+attribute's types of.'''

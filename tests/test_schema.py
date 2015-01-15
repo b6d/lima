@@ -35,6 +35,7 @@ def person_schema_cls(str_field, int_field, date_field):
 class NonLocalSchema(schema.Schema):
     foo = fields.String()
 
+
 class TestHelperFunctions:
     '''Class collecting tests of helper functions.'''
 
@@ -52,6 +53,25 @@ class TestHelperFunctions:
         assert mangle('dot__foo') == '.foo'
         assert mangle('hash__foo') == '#foo'
         assert mangle('plus__foo') == '+foo'
+
+    def test_make_function(self):
+        code = 'def func_in_namespace(): return 1'
+        my_function = schema._make_function('func_in_namespace', code)
+        assert(callable(my_function))
+        assert(my_function() == 1)
+        # make sure the new name didn't leak out into globals/locals
+        with pytest.raises(NameError):
+            func_in_namespace
+
+        code = 'def func_in_namespace(): return a'
+        namespace = dict(a=42)
+        my_function = schema._make_function('func_in_namespace',
+                                            code, namespace)
+        assert(callable(my_function))
+        assert(my_function() == 42)
+        # make sure the new name didn't leak out of namespace
+        with pytest.raises(NameError):
+            func_in_namespace
 
 
 class TestSchemaDefinition:
@@ -583,14 +603,44 @@ class TestSchemaInstantiation:
             person_schema = person_schema_cls(exclude=['number'],
                                               only=['name'])
 
+    def test_schema_many_property(self, person_schema_cls):
+        '''test if schema.many gets set and is read-only'''
+        person_schema = person_schema_cls()
+        assert person_schema.many == False
+        person_schema = person_schema_cls(many=False)
+        assert person_schema.many == False
+        person_schema = person_schema_cls(many=True)
+        assert person_schema.many == True
+        with pytest.raises(AttributeError):
+            person_schema.many = False
+
+    def test_schema_ordered_property(self, person_schema_cls):
+        '''test if schema.ordered gets set and is read-only'''
+        person_schema = person_schema_cls()
+        assert person_schema.ordered == False
+        person_schema = person_schema_cls(ordered=False)
+        assert person_schema.ordered == False
+        person_schema = person_schema_cls(ordered=True)
+        assert person_schema.ordered == True
+        with pytest.raises(AttributeError):
+            person_schema.ordered = False
+
+
+class TestLazyDumpFunctionCreation:
+
     def test_fail_on_non_identifier_attr_name(self):
         '''Test if providing a non-identifier attr name raises an error'''
+
         class TestSchema(schema.Schema):
             foo = fields.String()
             foo.attr = 'this-is@not;an+identifier'
 
+        test_schema = TestSchema()
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema = TestSchema()
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('foo')
 
     def test_fail_on_non_identifier_field_name_without_attr(self):
         '''Test if providing a non-identifier field name raises an error ...
@@ -606,8 +656,12 @@ class TestSchemaInstantiation:
                 }
             }
 
+        test_schema = TestSchema()
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema = TestSchema()
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('not@an-identifier')
 
     def test_fail_on_keyword_attr_name(self):
         '''Test if providing a non-identifier attr name raises an error'''
@@ -615,8 +669,22 @@ class TestSchemaInstantiation:
             foo = fields.String()
             foo.attr = 'class'  # 'class' is a keyword
 
+        test_schema = TestSchema()
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema = TestSchema()
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('foo')
+
+    def test_fail_on_nonexistent_field(self):
+        '''Test if providing a non-identifier attr name raises an error'''
+        class TestSchema(schema.Schema):
+            foo = fields.String()
+
+        test_schema = TestSchema()
+        # dump funcs are created at first access. the next lines should fail
+        with pytest.raises(KeyError):
+            test_schema._dump_field_func('this_field_does_not_exist')
 
     def test_fail_on_keyword_field_name_without_attr(self):
         '''Test if providing a non-identifier field name raises an error ...
@@ -632,8 +700,12 @@ class TestSchemaInstantiation:
                 }
             }
 
+        test_schema = TestSchema()
+        # dump funcs are created at first access. the next lines should fail
         with pytest.raises(ValueError):
-            test_schema = TestSchema()
+            test_schema._dump_fields
+        with pytest.raises(ValueError):
+            test_schema._dump_field_func('class')
 
     def test_succes_on_non_identifier_field_name_with_attr(self):
         '''Test if providing a non-identifier field name raises no error ...
@@ -648,49 +720,23 @@ class TestSchemaInstantiation:
                 }
             }
 
+        # these should all succeed
         test_schema = TestSchema()
+        test_schema._dump_fields
+        test_schema._dump_field_func('not;an-identifier')
         assert 'not;an-identifier' in test_schema._fields
 
-    def test_fail_on_field_name_with_quotes(self):
-        '''Test if providing a field name with quotes raises an error ...'''
-        class TestSchema(schema.Schema):
-            __lima_args__ = {
-                'include': {
-                    'field_with_"quotes"': fields.String(attr='foo')
-                }
-            }
-
-        with pytest.raises(ValueError):
-            test_schema = TestSchema()
-
-    def test_get_dump_function_code(self):
-        '''Test if _get_dump_function_code gets a simple function right.'''
-        from textwrap import dedent
+    def test_function_caching(self):
+        '''Test if lazily created functions are cached'''
 
         class TestSchema(schema.Schema):
-            foo = fields.String(attr='foo_attr')
-            bar = fields.String()
+            foo = fields.String()
 
         test_schema = TestSchema()
-        expected = dedent(
-            '''\
-            def _dump_function(schema, obj):
-                return {
-                    "foo": obj.foo_attr,
-                    "bar": obj.bar
-                }
-            '''
-        )
-        assert test_schema._get_dump_function_code() == expected
+        fn1 = test_schema._dump_fields
+        fn2 = test_schema._dump_fields
+        assert fn1 is fn2  # after first eval, the same obj should be returned
 
-        test_schema = TestSchema(ordered=True)
-        expected = dedent(
-            '''\
-            def _dump_function(schema, obj):
-                return OrderedDict([
-                    ("foo", obj.foo_attr),
-                    ("bar", obj.bar)
-                ])
-            '''
-        )
-        assert test_schema._get_dump_function_code() == expected
+        fn1 = test_schema._dump_field_func('foo')
+        fn2 = test_schema._dump_field_func('foo')
+        assert fn1 is fn2  # after first eval, the same obj should be returned

@@ -23,13 +23,66 @@ def complain_about(name):
         raise
 
 
+# The code for this class is taken from pyramid.decorator (with negligible
+# alterations), licensed under the Repoze Public License (see
+# http://www.pylonsproject.org/about/license)
+class reify:
+    '''Like property, but saves the underlying method's result for later use.
+
+    Use as a class method decorator. It operates almost exactly like the Python
+    ``@property`` decorator, but it puts the result of the method it decorates
+    into the instance dict after the first call, effectively replacing the
+    function it decorates with an instance variable. It is, in Python parlance,
+    a non-data descriptor. An example:
+
+    .. code-block:: python
+
+       class Foo(object):
+           @reify
+           def jammy(self):
+               print('jammy called')
+               return 1
+
+    And usage of Foo:
+
+    >>> f = Foo()
+    >>> v = f.jammy
+    'jammy called'
+    >>> print(v)
+    1
+    >>> f.jammy
+    1
+    >>> # jammy func not called the second time; it replaced itself with 1
+
+    Taken from pyramid.decorator (see source for license info).
+
+    '''
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        self.__doc__ = wrapped.__doc__
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        val = self.wrapped(instance)
+        setattr(instance, self.wrapped.__name__, val)
+        return val
+
+
+# The code for this class is taken directly from the Python 3.4 standard
+# library (to support Python 3.3), licensed under the PSF License (see
+# https://docs.python.org/3/license.html)
 class suppress:
     '''Context manager to suppress specified exceptions
 
-    This context manager is taken directly from the Python 3.4 standard library
-    to get support for Python 3.3.
+    After the exception is suppressed, execution proceeds with the next
+    statement following the with statement.
 
-    See https://docs.python.org/3.4/library/contextlib.html#contextlib.suppress
+         with suppress(FileNotFoundError):
+             os.remove(somefile)
+         # Execution still resumes here if the file was already removed
+
+    Backported for Python 3.3 from Python 3.4 (see source for license info).
 
     '''
     def __init__(self, *exceptions):
@@ -39,6 +92,15 @@ class suppress:
         pass
 
     def __exit__(self, exctype, excinst, exctb):
+        # Unlike isinstance and issubclass, CPython exception handling
+        # currently only looks at the concrete type hierarchy (ignoring
+        # the instance and subclass checking hooks). While Guido considers
+        # that a bug rather than a feature, it's a fairly hard one to fix
+        # due to various internal implementation details. suppress provides
+        # the simpler issubclass based semantics, rather than trying to
+        # exactly reproduce the limitations of the CPython interpreter.
+        #
+        # See http://bugs.python.org/issue12029 for more details
         return exctype is not None and issubclass(exctype, self._exceptions)
 
 
