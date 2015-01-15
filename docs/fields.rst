@@ -208,8 +208,9 @@ Or we can change how already supported data types are marshalled:
     at least in a format accepted by the serializer of your target format).
 
     Also, don't try to override an existing instance method with a static
-    method. Have a look at the source if in doubt (currently only
-    :class:`lima.fields.Embed` implements :meth:`pack` as an instance method.
+    method. Have a look at the source if in doubt (in lima itself, currently
+    only :class:`lima.fields.Embed` and :class:`lima.fields.Reference`
+    implement :meth:`pack` as instance methods.
 
 
 .. _data_validation:
