@@ -117,19 +117,20 @@ Two-way Relationships
 
 Up until now, we've only dealt with one-way relationships (*From* a review *to*
 its book). If not only a review should link to its book, but a book should
-also link to it's top rated review, we can adapt our model like this:
+also link to it's most popular review, we can adapt our model like this:
 
 .. code-block:: python
-    :emphasize-lines: 7,13,18-19
+    :emphasize-lines: 7,19-20
 
-    # books now link to their top review
+    # books now link to their most popular review
     class Book:
-        def __init__(self, isbn, author, title, top_review=None):
+        def __init__(self, isbn, author, title, pop_review=None):
             self.isbn = isbn
             self.author = author
             self.title = title
-            self.top_review = top_review
+            self.pop_review = pop_review
 
+    # unchanged: reviews still link to their books
     class Review:
         def __init__(self, rating, text, book=None):
             self.rating = rating
@@ -139,7 +140,7 @@ also link to it's top rated review, we can adapt our model like this:
     book = Book('0-684-80122-1', 'Hemingway', 'The Old Man and the Sea')
     review = Review(4, "Why doesn't he just kill ALL the sharks?")
 
-    book.top_review = review
+    book.pop_review = review
     review.book = book
 
 
@@ -147,7 +148,7 @@ If we want to construct schemas for models like this, we will have to adress
 two problems:
 
 1. **Definition order:** If we define our :class:`BookSchema` first, its
-   :attr:`top_review` attribute will have to reference a :class:`ReviewSchema`
+   :attr:`pop_review` attribute will have to reference a :class:`ReviewSchema`
    - but this doesn't exist yet, since we decided to define :class:`BookSchema`
    first. If we decide to define :class:`ReviewSchema` first instead, we run
    into the same problem with its :attr:`book` attribute.
@@ -166,26 +167,31 @@ schemas. Just pass the *qualified name* (or the *fully module-qualified name*)
 of a schema class to :class:`~lima.fields.Embed` instead of the class itself:
 
 .. code-block:: python
-    :emphasize-lines: 5,8,17-18,22-24
+    :emphasize-lines: 5,8
 
     class BookSchema(Schema):
         isbn = fields.String()
         author = fields.String()
         title = fields.String()
-        top_review = fields.Embed(schema='ReviewSchema', exclude='book')
+        pop_review = fields.Embed(schema='ReviewSchema', exclude='book')
 
     class ReviewSchema(Schema):
-        book = fields.Embed(schema=BookSchema, exclude='review')
+        book = fields.Embed(schema=BookSchema, exclude='pop_review')
         rating = fields.Integer()
         text = fields.String()
+
+Now embedding works both ways:
+
+.. code-block:: python
+    :emphasize-lines: 5-6,11-13
 
     book_schema = BookSchema()
     book_schema.dump(book)
     # {'author': 'Hemingway',
     #  'isbn': '0-684-80122-1',
-    #  'title': The Old Man and the Sea'
-    #  'top_review': {'rating': 4,
-    #                 'text': "Why doesn't he just kill ALL the sharks?"}}
+    #  'pop_review': {'rating': 4,
+    #                 'text': "Why doesn't he just kill ALL the sharks?"},
+    #  'title': The Old Man and the Sea'}
 
     review_schema = ReviewSchema()
     review_schema.dump(review)
@@ -250,7 +256,7 @@ for models that link to themselves - everything works as you'd expect:
             self.last_name = last_name
             self.spouse = spouse
 
-    class MarriedPersonSchema(PersonSchema):
+    class MarriedPersonSchema(Schema):
         first_name = fields.String()
         last_name = fields.String()
         spouse = fields.Embed(schema='MarriedPersonSchema', exclude='spouse')
@@ -266,11 +272,11 @@ We know the necessary building blocks already: Providing additional keyword
 arguments to :class:`~lima.fields.Embed` (or :class:`~lima.fields.Reference`
 respectively) passes them through to the specified schema's constructor. And
 providing ``many=True`` to a schema's construtor will have the schema
-marshalling collections - so:
+marshalling collections - so if our model looks like this:
 
 
 .. code-block:: python
-    :emphasize-lines: 7,16-20,26-28,31,39-43
+    :emphasize-lines: 7,16-20
 
     # books now have a list of reviews
     class Book:
@@ -293,6 +299,11 @@ marshalling collections - so:
         Review(8, 'Better than the movie!', book),
     ]
 
+... we wourld define our schemas like this:
+
+.. code-block:: python
+    :emphasize-lines: 5-7,10
+
     class BookSchema(Schema):
         isbn = fields.String()
         author = fields.String()
@@ -306,15 +317,19 @@ marshalling collections - so:
         rating = fields.Integer()
         text = fields.String()
 
+... which enables us to serialize a book object with many reviews:
+
+.. code-block:: python
+    :emphasize-lines: 5-8
+
     book_schema = BookSchema()
     book_schema.dump(book)
     # {'author': 'Hemingway',
     #  'isbn': '0-684-80122-1',
     #  'reviews': [
-    #       {'rating': 4, 'text': "Why doesn't he just kill ALL the sharks?"},
     #       {'rating': 10, 'text': 'Has lots of sharks.'},
-    #       {'rating': 8, 'text': 'Better than the movie!'},
-    #  ],
+    #       {'rating': 4, 'text': "Why doesn't he just kill ALL the sharks?"},
+    #       {'rating': 8, 'text': 'Better than the movie!'}],
     #  'title': The Old Man and the Sea'
 
 
