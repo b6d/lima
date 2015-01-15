@@ -65,6 +65,8 @@ like.
     exotic column types. There is still work to be done.
 
 
+.. _field_name_mangling:
+
 Field Name Mangling
 ===================
 
@@ -73,8 +75,8 @@ Fields provided via class attributes have a drawback: class attribute names
 have to be valid Python identifiers.
 
 lima implements a simple name mangling mechanism to allow the specification of
-some common non-Python-identifier field names (like JSON-LD's ``"@id"``) as
-class attributes.
+some common non-Python-identifier field names (like `JSON-LD
+<http://json-ld.org>`_'s ``"@id"``) as class attributes.
 
 The following table shows how name prefixes will be replaced by lima when
 specifying fields as class attributes (note that every one of those prefixes

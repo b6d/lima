@@ -112,6 +112,42 @@ its ISBN like this:
     #  'text': 'Has lots of sharks.'}
 
 
+Hyperlinks
+==========
+
+One application of :class:`~lima.fields.Reference` is linking to ressources via
+hyperlinks in RESTful Web Services. Here is a quick sketch:
+
+.. code-block:: python
+    :emphasize-lines: 6,12,18
+
+    # your framework should provide something like this
+    def book_url(book):
+        return 'https://my.service/books/{}'.format(book.isbn)
+
+    class BookSchema(Schema):
+        url = fields.String(get=book_url)
+        isbn = fields.String()
+        author = fields.String()
+        title = fields.String()
+
+    class ReviewSchema(Schema):
+        book = fields.Reference(schema=BookSchema, field_name='url')
+        rating = fields.Integer()
+        text = fields.String()
+
+    review_schema = ReviewSchema()
+    review_schema.dump(review)
+    # {'book': 'https://my.service/books/0-684-80122-1',
+    #  'rating': 10,
+    #  'text': 'Has lots of sharks.'}
+
+If you want to do `JSON-LD <http://json-ld.org>`_ and you want to have fields
+with names like ``"@id"`` or ``"@context"``, have a look at the section on
+:ref:`field_name_mangling` for an easy way to accomplish this.
+
+
+
 Two-way Relationships
 =====================
 
