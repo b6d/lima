@@ -2,118 +2,159 @@
 Linked Data
 ===========
 
-Most ORMs represent linked objects nested under an attribute of the linking
-object. As an example, lets model the relationship between a book and its
-author:
+Lets model a relationship between a book and a book review:
 
 .. code-block:: python
-    :emphasize-lines: 10,14
+    :emphasize-lines: 16
 
-    class Person:
-        def __init__(self, first_name, last_name):
-            self.first_name = first_name
-            self.last_name = last_name
-
-    # A book links to its author via a nested Person object
     class Book:
-        def __init__(self, title, author=None):
-            self.title = title
+        def __init__(self, isbn, author, title):
+            self.isbn = isbn
             self.author = author
+            self.title = title
 
-    person = Person('Ernest', 'Hemingway')
-    book = Book('The Old Man and the Sea')
-    book.author = person
+    # A review links to a book via the "book" attribute
+    class Review:
+        def __init__(self, rating, text, book=None):
+            self.rating = rating
+            self.text = text
+            self.book = book
+
+    book = Book('0-684-80122-1', 'Hemingway', 'The Old Man and the Sea')
+    review = Review(10, 'Has lots of sharks.')
+    review.book = book
+
+To serialize this construct, we have to tell lima that a :class:`Review` object
+links to a :class:`Book` object via the :attr:`book` attribute (many ORMs
+represent related objects in a similar way).
 
 
-One-way Relationships
-=====================
+Embedding linked Objects
+========================
 
-Currently, this relationship is one way only: *From* a book *to* its author.
-The author doesn't know anything about books yet (well, in our model at least).
-
-To serialize this construct, we have to tell lima that a :class:`Book` object
-has a :class:`Person` object nested inside, designated via the :attr:`author`
-attribute.
-
-For this we use a field of type :class:`lima.fields.Embed` and tell lima what
-data to expect by providing the ``schema`` parameter:
+We can use a field of type :class:`lima.fields.Embed` to *embed* the serialized
+book into the serialization of the review. For this to work we have to tell the
+:class:`~lima.fields.Embed` field what to expect by providing the ``schema``
+parameter:
 
 .. code-block:: python
-    :emphasize-lines: 9,13
+    :emphasize-lines: 9,15-17
 
     from lima import fields, Schema
 
-    class PersonSchema(Schema):
-        first_name = fields.String()
-        last_name = fields.String()
-
     class BookSchema(Schema):
+        isbn = fields.String()
+        author = fields.String()
         title = fields.String()
-        author = fields.Embed(schema=PersonSchema)
 
-    schema = BookSchema()
-    schema.dump(book)
-    # {'author': {'first_name': 'Ernest', 'last_name': 'Hemingway'},
-    #  'title': The Old Man and the Sea'}
+    class ReviewSchema(Schema):
+        book = fields.Embed(schema=BookSchema)
+        rating = fields.Integer()
+        text = fields.String()
+
+    review_schema = ReviewSchema()
+    review_schema.dump(review)
+    # {'book': {'author': 'Hemingway',
+    #           'isbn': '0-684-80122-1',
+    #           'title': 'The Old Man and the Sea'},
+    #  'rating': 10,
+    #  'text': 'Has lots of sharks.'}
 
 Along with the mandatory keyword-only argument ``schema``,
-:class:`lima.fields.Embed` accepts the optional keyword-only-arguments we
-already know (``attr`` or ``get``). All other keyword arguments provided to
-:class:`lima.fields.Embed` get passed through to the constructor of the linked
-schema. This allows us to do stuff like the following:
+:class:`~lima.fields.Embed` accepts the optional keyword-only-arguments we
+already know (``attr``, ``get``, ``val``). All other keyword arguments provided
+to :class:`~lima.fields.Embed` get passed through to the constructor of the
+associated schema. This allows us to do stuff like the following:
 
 .. code-block:: python
-    :emphasize-lines: 3, 7
+    :emphasize-lines: 4-6,10-11
 
-    class BookSchema(Schema):
-        title = fields.String()
-        author = fields.Embed(schema=PersonSchema, only='last_name')
+    class ReviewSchemaPartialBook(Schema):
+        rating = fields.Integer()
+        text = fields.String()
+        partial_book = fields.Embed(attr='book',
+                                    schema=BookSchema,
+                                    exclude='isbn')
 
-    schema = BookSchema()
-    schema.dump(book)
-    # {'author': {'last_name': 'Hemingway'},
-    #  'title': The Old Man and the Sea'}
+    review_schema_partial_book = ReviewSchemaPartialBook()
+    review_schema_partial_book.dump(review)
+    # {'partial_book': {'author': 'Hemingway',
+    #                   'title': 'The Old Man and the Sea'},
+    #  'rating': 10,
+    #  'text': 'Has lots of sharks.'}
+
+
+Referencing linked Objects
+==========================
+
+Embedding linked objects is not always what we want. If we just want to
+reference linked objects, we can use a field of type
+:class:`lima.fields.Reference`. This field type yields the value of a single
+field of the linked object's serialization.
+
+Referencing is similar to embedding save one key difference: In addition to the
+schema of the linked object we also provide the name of the field that acts as
+our reference to the linked object. We may, for example, reference a book via
+its ISBN like this:
+
+.. code-block:: python
+    :emphasize-lines: 2,8
+
+    class ReferencingReviewSchema(Schema):
+        book = fields.Reference(schema=BookSchema, field_name='isbn')
+        rating = fields.Integer()
+        text = fields.String()
+
+    referencing_review_schema = ReferencingReviewSchema()
+    referencing_review_schema.dump(review)
+    # {'book': '0-684-80122-1',
+    #  'rating': 10,
+    #  'text': 'Has lots of sharks.'}
 
 
 Two-way Relationships
 =====================
 
-If not only a book should link to its author, but an author should also link to
-his/her bestselling book, we can adapt our model like this:
+Up until now, we've only dealt with one-way relationships (*From* a review *to*
+its book). If not only a review should link to its book, but a book should
+also link to it's top rated review, we can adapt our model like this:
 
 .. code-block:: python
-    :emphasize-lines: 5,11,15-16
+    :emphasize-lines: 7,13,18-19
 
-    # authors link to their bestselling book
-    class Author(Person):
-        def __init__(self, first_name, last_name, bestseller=None):
-            super().__init__(first_name, last_name)
-            self.bestseller = bestseller
-
-    # books link to their authors
+    # books now link to their top review
     class Book:
-        def __init__(self, title, author=None):
-            self.title = title
+        def __init__(self, isbn, author, title, top_review=None):
+            self.isbn = isbn
             self.author = author
+            self.title = title
+            self.top_review = top_review
 
-    author = Author('Ernest', 'Hemingway')
-    book = Book('The Old Man and the Sea')
-    book.author = author
-    author.bestseller = book
+    class Review:
+        def __init__(self, rating, text, book=None):
+            self.rating = rating
+            self.text = text
+            self.book = book
+
+    book = Book('0-684-80122-1', 'Hemingway', 'The Old Man and the Sea')
+    review = Review(4, "Why doesn't he just kill ALL the sharks?")
+
+    book.top_review = review
+    review.book = book
+
 
 If we want to construct schemas for models like this, we will have to adress
 two problems:
 
-1. **Definition order:** If we define our :class:`AuthorSchema` first, its
-   :attr:`bestseller` attribute will have to reference a :class:`BookSchema` -
-   but this doesn't exist yet, since we decided to define :class:`AuthorSchema`
-   first. If we decide to define :class:`BookSchema` first instead, we run into
-   the same problem with its :attr:`author` attribute.
+1. **Definition order:** If we define our :class:`BookSchema` first, its
+   :attr:`top_review` attribute will have to reference a :class:`ReviewSchema`
+   - but this doesn't exist yet, since we decided to define :class:`BookSchema`
+   first. If we decide to define :class:`ReviewSchema` first instead, we run
+   into the same problem with its :attr:`book` attribute.
 
-2. **Recursion:** An author links to a book that links to an author that links
-   to a book that links to an author that links to a book that links to an
-   author that links to a book that links to an author that links to a book
-   that links to an author ``RuntimeError: maximum recursion depth exceeded``
+2. **Recursion:** A review links to a book that links to a review that links to
+   a book that links to a review that links to a book that links to a review
+   that links to a book ``RuntimeError: maximum recursion depth exceeded``
 
 lima makes it easy to deal with those problems:
 
@@ -122,28 +163,37 @@ side that links back.
 
 To overcome the problem of definition order, lima supports lazy evaluation of
 schemas. Just pass the *qualified name* (or the *fully module-qualified name*)
-of a schema class to :class:`lima.fields.Embed` instead of the class itself:
+of a schema class to :class:`~lima.fields.Embed` instead of the class itself:
 
 .. code-block:: python
-    :emphasize-lines: 2,6,12,16
-
-    class AuthorSchema(PersonSchema):
-        bestseller = fields.Embed(schema='BookSchema', exclude='author')
+    :emphasize-lines: 5,8,17-18,22-24
 
     class BookSchema(Schema):
+        isbn = fields.String()
+        author = fields.String()
         title = fields.String()
-        author = fields.Embed(schema=AuthorSchema, exclude='bestseller')
+        top_review = fields.Embed(schema='ReviewSchema', exclude='book')
 
-    author_schema = AuthorSchema()
-    author_schema.dump(author)
-    # {'first_name': 'Ernest',
-    #  'last_name': 'Hemingway',
-    #  'bestseller': {'title': The Old Man and the Sea'}
+    class ReviewSchema(Schema):
+        book = fields.Embed(schema=BookSchema, exclude='review')
+        rating = fields.Integer()
+        text = fields.String()
 
     book_schema = BookSchema()
     book_schema.dump(book)
-    # {'author': {'first_name': 'Ernest', 'last_name': 'Hemingway'},
-    #  'title': The Old Man and the Sea'}
+    # {'author': 'Hemingway',
+    #  'isbn': '0-684-80122-1',
+    #  'title': The Old Man and the Sea'
+    #  'top_review': {'rating': 4,
+    #                 'text': "Why doesn't he just kill ALL the sharks?"}}
+
+    review_schema = ReviewSchema()
+    review_schema.dump(review)
+    # {'book': {'author': 'Hemingway',
+    #           'isbn': '0-684-80122-1',
+    #           'title': 'The Old Man and the Sea'},
+    #  'rating': 4,
+    #  'text': "Why doesn't he just kill ALL the sharks?"}
 
 .. _on_class_names:
 
@@ -159,15 +209,15 @@ of a schema class to :class:`lima.fields.Embed` instead of the class itself:
         of the time, it's the same as the class's :attr:`__name__` attribute
         (except if you define classes within classes or functions ...). If you
         define ``class Foo: pass`` at the top level of your module, the class's
-        qualified name is simply *Foo*. Qualified names were introduced with
+        qualified name is simply ``Foo``. Qualified names were introduced with
         Python 3.3 via `PEP 3155 <https://python.org/dev/peps/pep-3155>`_
 
     The fully module-qualified name
         This is the qualified name of the class prefixed with the full name of
         the module the class is defined in. If you define ``class Qux: pass``
-        within a class :class:`Baz` (resulting in the qualified name *Baz.Qux*)
-        at the top level of your ``foo.bar`` module, the class's fully
-        module-qualified name is *foo.bar.Baz.Qux*.
+        within a class :class:`Baz` (resulting in the qualified name
+        ``Baz.Qux``) at the top level of your ``foo.bar`` module, the class's
+        fully module-qualified name is ``foo.bar.Baz.Qux``.
 
 .. warning::
 
@@ -192,14 +242,17 @@ By the way, there's nothing stopping us from using the idioms we just learned
 for models that link to themselves - everything works as you'd expect:
 
 .. code-block:: python
-    :emphasize-lines: 4,7
+    :emphasize-lines: 5,10
 
-    class MarriedPerson(Person):
+    class MarriedPerson:
         def __init__(self, first_name, last_name, spouse=None):
-            super().__init__(first_name, last_name)
+            self.first_name = first_name
+            self.last_name = last_name
             self.spouse = spouse
 
     class MarriedPersonSchema(PersonSchema):
+        first_name = fields.String()
+        last_name = fields.String()
         spouse = fields.Embed(schema='MarriedPersonSchema', exclude='spouse')
 
 
@@ -210,48 +263,69 @@ Until now, we've only dealt with one-to-one relations. What about one-to-many
 and many-to-many relations? Those link to collections of objects.
 
 We know the necessary building blocks already: Providing additional keyword
-arguments to :class:`lima.fields.Embed` passes them through to the specified
-schema's constructor. And providing ``many=True`` to a schema's construtor will
-have the schema marshalling collections - so:
+arguments to :class:`~lima.fields.Embed` (or :class:`~lima.fields.Reference`
+respectively) passes them through to the specified schema's constructor. And
+providing ``many=True`` to a schema's construtor will have the schema
+marshalling collections - so:
 
 
 .. code-block:: python
-    :emphasize-lines: 5,15,19
+    :emphasize-lines: 7,16-20,26-28,31,39-43
 
-    # authors link to their books now
-    class Author(Person):
-        def __init__(self, first_name, last_name, books=None):
-            super().__init__(first_name, last_name)
-            self.books = books
+    # books now have a list of reviews
+    class Book:
+        def __init__(self, isbn, author, title):
+            self.isbn = isbn
+            self.author = author
+            self.title = title
+            self.reviews = []
 
-    author = Author('Virginia', 'Woolf')
-    author.books = [
-        Book('Mrs Dalloway', author),
-        Book('To the Lighthouse', author),
-        Book('Orlando', author)
+    class Review:
+        def __init__(self, rating, text, book=None):
+            self.rating = rating
+            self.text = text
+            self.book = book
+
+    book = Book('0-684-80122-1', 'Hemingway', 'The Old Man and the Sea')
+    book.reviews = [
+        Review(10, 'Has lots of sharks.', book),
+        Review(4, "Why doesn't he just kill ALL the sharks?", book),
+        Review(8, 'Better than the movie!', book),
     ]
 
-    class AuthorSchema(PersonSchema):
-        books = fields.Embed(schema='BookSchema', exclude='author', many=True)
-
     class BookSchema(Schema):
+        isbn = fields.String()
+        author = fields.String()
         title = fields.String()
-        author = fields.Embed(schema=AuthorSchema, exclude='books')
+        reviews = fields.Embed(schema='ReviewSchema',
+                               many=True,
+                               exclude='book')
 
-    schema = AuthorSchema()
-    schema.dump(author)
-    # {'books': [{'title': 'Mrs Dalloway'},
-    #            {'title': 'To the Lighthouse'},
-    #            {'title': 'Orlando'}],
-    #  'last_name': 'Woolf',
-    #  'first_name': 'Virginia'}
+    class ReviewSchema(Schema):
+        book = fields.Embed(schema=BookSchema, exclude='reviews')
+        rating = fields.Integer()
+        text = fields.String()
+
+    book_schema = BookSchema()
+    book_schema.dump(book)
+    # {'author': 'Hemingway',
+    #  'isbn': '0-684-80122-1',
+    #  'reviews': [
+    #       {'rating': 4, 'text': "Why doesn't he just kill ALL the sharks?"},
+    #       {'rating': 10, 'text': 'Has lots of sharks.'},
+    #       {'rating': 8, 'text': 'Better than the movie!'},
+    #  ],
+    #  'title': The Old Man and the Sea'
 
 
 Linked Data Recap
 =================
 
-- You now know how to marshal linked objects (via a field of type
+- You now know how to marshal embedded linked objects (via a field of type
   :class:`lima.fields.Embed`)
+
+- You now know how to marshal references to linked objects (via a field of
+  type :class:`lima.fields.References`)
 
 - You know about lazy evaluation of linked schemas and how to specify those via
   qualified and fully module-qualified names.
