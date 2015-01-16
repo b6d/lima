@@ -199,7 +199,7 @@ class _LinkedObjectField(Field):
                 has the wrong type.
 
         '''
-        with util.complain_about('Lazy evaluation of schema instance'):
+        with util.exception_context('Lazy evaluation of schema instance'):
 
             # those were supplied to field constructor
             schema = self._schema_arg

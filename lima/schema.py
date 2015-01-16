@@ -334,7 +334,7 @@ class SchemaMeta(type):
 
         # pop/verify __lima_args__
         args = namespace.get('__lima_args__', {})
-        with util.complain_about('__lima_args__'):
+        with util.exception_context('__lima_args__'):
             util.ensure_mapping(args)
             util.ensure_subset_of(args, {'include', 'exclude', 'only'})
             util.ensure_only_one_of(args, {'exclude', 'only'})
@@ -349,7 +349,7 @@ class SchemaMeta(type):
             if k == '__lima_args__':
                 # at position of __lima_args__: insert include (if specified)
                 if include:
-                    with util.complain_about("__lima_args__['include']"):
+                    with util.exception_context("__lima_args__['include']"):
                         fields = _fields_include(fields, include)
             elif isinstance(v, abc.FieldABC):
                 # if a field was found: move it from namespace into fields
@@ -357,10 +357,10 @@ class SchemaMeta(type):
                 fields[_mangle_name(k)] = namespace.pop(k)
 
         if exclude:
-            with util.complain_about('__lima_args__["exclude"]'):
+            with util.exception_context('__lima_args__["exclude"]'):
                 fields = _fields_exclude(fields, exclude)
         elif only:
-            with util.complain_about('__lima_args__["only"]'):
+            with util.exception_context('__lima_args__["only"]'):
                 fields = _fields_only(fields, only)
 
         # add __fields__ to namespace
@@ -477,14 +477,14 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
             raise ValueError(msg)
 
         if include:
-            with util.complain_about('include'):
+            with util.exception_context('include'):
                 fields = _fields_include(fields, include)
 
         if exclude:
-            with util.complain_about('exclude'):
+            with util.exception_context('exclude'):
                 fields = _fields_exclude(fields, util.vector_context(exclude))
         elif only:
-            with util.complain_about('only'):
+            with util.exception_context('only'):
                 fields = _fields_only(fields, util.vector_context(only))
 
         # add instance vars to self
@@ -506,7 +506,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
     @util.reify
     def _dump_fields(self):
         '''Return instance-specific dump function for all fields (reified).'''
-        with util.complain_about('Lazy creation of dump fields function'):
+        with util.exception_context('Lazy creation of dump fields function'):
             return _dump_fields_func(self._fields, self._ordered, self._many)
 
     def _dump_field_func(self, field_name):
@@ -519,7 +519,7 @@ class Schema(abc.SchemaABC, metaclass=SchemaMeta):
         if field_name in self._dump_field_func_cache:
             return self._dump_field_func_cache[field_name]
 
-        with util.complain_about('Lazy creation of dump field function'):
+        with util.exception_context('Lazy creation of dump field function'):
             func = _dump_field_func(self._fields[field_name],
                                    field_name, self._many)
             self._dump_field_func_cache[field_name] = func
