@@ -5,6 +5,10 @@ Changelog
 0.5 (unreleased)
 ================
 
+.. note::
+
+    While unreleased, the changelog of lima 0.5 is itself subject to change.
+
 - Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
 
 
