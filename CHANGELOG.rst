@@ -42,7 +42,7 @@ Changelog
 
 - Small speed improvement when serializing collections.
 
-- Remove deprecated field ``fields.type_mapping``. Use ``fields.TYPE_MAPPING``
+- Remove deprecated name ``fields.type_mapping``. Use ``fields.TYPE_MAPPING``
   instead.
 
 - Overall cleanup, improvements and bug fixes.
