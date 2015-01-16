@@ -5,7 +5,7 @@ Changelog
 0.5 (unreleased)
 ================
 
-No changes yet.
+- Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
 
 
 0.4 (2015-01-15)

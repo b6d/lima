@@ -365,15 +365,6 @@ class Reference(_LinkedObjectField):
         return self._pack_func(val) if val is not None else None
 
 
-Nested = Embed
-'''A Field to embed linked object(s)
-
-:class:`Nested` is the old name of class :class:`Embed`.
-
-.. deprecated:: 0.4
-    Will be removed in 0.5. Use :class:`Embed` instead'''
-
-
 TYPE_MAPPING = {
     bool: Boolean,
     float: Float,
