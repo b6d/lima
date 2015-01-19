@@ -2,7 +2,7 @@
 Linked Data
 ===========
 
-Lets model a relationship between a book and a book review:
+Let's model a relationship between a book and a book review:
 
 .. code-block:: python
     :emphasize-lines: 16
