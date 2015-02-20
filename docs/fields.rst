@@ -53,8 +53,8 @@ attribute name via the ``attr`` argument:
     #  'last_name': 'Hemingway'}
 
 
-Data derived by differnt Means
-------------------------------
+Data derived by different Means
+-------------------------------
 
 Providing ``attr`` is the preferred way to deal with attribute names differing
 from field names, but ``attr`` is not always enough. What if we can't get the
