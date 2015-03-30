@@ -332,7 +332,7 @@ class SchemaMeta(type):
         # aggregate fields from base classes
         fields = _fields_from_bases(bases)
 
-        # pop/verify __lima_args__
+        # get and verify __lima_args__
         args = namespace.get('__lima_args__', {})
         with util.exception_context('__lima_args__'):
             util.ensure_mapping(args)
