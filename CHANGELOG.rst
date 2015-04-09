@@ -9,6 +9,9 @@ Changelog
 
     While unreleased, the changelog of lima 0.5 is itself subject to change.
 
+- Support getting field values from an object's items by providing the ``key``
+  argument to a Field constructor.
+
 - Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
 
 
