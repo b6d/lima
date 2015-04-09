@@ -13,6 +13,8 @@ class Field(abc.FieldABC):
     Args:
         attr: The optional name of the corresponding attribute.
 
+        key: The optional name of the corresponding key.
+
         get: An optional getter function accepting an object as its only
             parameter and returning the field value.
 
@@ -21,14 +23,15 @@ class Field(abc.FieldABC):
     .. versionadded:: 0.3
         The ``val`` parameter.
 
-    :attr:`attr`, :attr:`get` and :attr:`val` are mutually exclusive.
+    :attr:`attr`, :attr:`key`, :attr:`get` and :attr:`val` are mutually
+    exclusive.
 
     When a :class:`Field` object ends up with two or more of the attributes
-    :attr:`attr`, :attr:`get` and :attr:`val` regardless (because one or more
-    of them are implemented at the class level for example),
+    :attr:`attr`, :attr:`key`, :attr:`get` and :attr:`val` regardless (because
+    one or more of them are implemented at the class level for example),
     :meth:`lima.schema.Schema.dump` tries to get the field's value in the
-    following order: :attr:`val` takes precedence over :attr:`get` and
-    :attr:`get` takes precedence over :attr:`attr`.
+    following order: :attr:`val` :attr:`get` :attr:`key` and finally
+    :attr:`attr`.
 
     If a :class:`Field` object ends up with none of these attributes (not at
     the instance and not at the class level), :meth:`lima.schema.Schema.dump`
@@ -37,16 +40,18 @@ class Field(abc.FieldABC):
     instance.
 
     '''
-    def __init__(self, *, attr=None, get=None, val=None):
-        if sum(v is not None for v in (attr, get, val)) > 1:
-            raise ValueError('attr, get and val are mutually exclusive.')
+    def __init__(self, *, attr=None, key=None, get=None, val=None):
+        if sum(v is not None for v in (attr, key, get, val)) > 1:
+            raise ValueError('attr, key, get and val are mutually exclusive.')
 
-        if attr:
+        if attr is not None:
             if not isinstance(attr, str) or not str.isidentifier(attr):
                 msg = 'attr is not a valid Python identifier: {}'.format(attr)
                 raise ValueError(msg)
             self.attr = attr
-        elif get:
+        elif key is not None:
+            self.key = key
+        elif get is not None:
             if not callable(get):
                 raise ValueError('get is not callable.')
             self.get = get
@@ -161,6 +166,8 @@ class _LinkedObjectField(Field):
 
         get: See :class:`Field`.
 
+        key: See :class:`Field`.
+
         val: See :class:`Field`.
 
         kwargs: Optional keyword arguments to pass to the :class:`Schema`'s
@@ -172,8 +179,15 @@ class _LinkedObjectField(Field):
     arguments might produce errors at a time after the field's instantiation.
 
     '''
-    def __init__(self, *, schema, attr=None, get=None, val=None, **kwargs):
-        super().__init__(attr=attr, get=get, val=val)
+    def __init__(self,
+                 *,
+                 schema,
+                 attr=None,
+                 key=None,
+                 get=None,
+                 val=None,
+                 **kwargs):
+        super().__init__(attr=attr, key=key, get=get, val=val)
 
         # those will be evaluated later on (in _schema_inst)
         self._schema_arg = schema
@@ -246,6 +260,8 @@ class Embed(_LinkedObjectField):
             defined within a local namespace can not be referenced by name.
 
         attr: See :class:`Field`.
+
+        key: See :class:`Field`.
 
         get: See :class:`Field`.
 
@@ -321,6 +337,8 @@ class Reference(_LinkedObjectField):
 
         attr: see :class:`Field`.
 
+        key: see :class:`Field`.
+
         get: see :class:`Field`.
 
         val: see :class:`Field`.
@@ -334,10 +352,12 @@ class Reference(_LinkedObjectField):
                  schema,
                  field,
                  attr=None,
+                 key=None,
                  get=None,
                  val=None,
                  **kwargs):
-        super().__init__(schema=schema, attr=attr, get=get, val=val, **kwargs)
+        super().__init__(schema=schema,
+                         attr=attr, key=key, get=get, val=val, **kwargs)
         self._field = field
 
     @util.reify

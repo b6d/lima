@@ -33,6 +33,20 @@ class KnightSchema(schema.Schema):
     born = fields.Date()
 
 
+class KnightDictSchema(schema.Schema):
+    title = fields.String(key='title')
+    name = fields.String(key='name')
+    number = fields.Integer(key='number')
+    born = fields.Date(key='born')
+
+
+class KnightListSchema(schema.Schema):
+    title = fields.String(key=0)
+    name = fields.String(key=1)
+    number = fields.Integer(key=2)
+    born = fields.Date(key=3)
+
+
 class FieldWithAttrArgSchema(schema.Schema):
     date_of_birth = fields.Date(attr='born')
 
@@ -109,7 +123,53 @@ def arthur(knights):
     return King('King', 'Arthur', 1, date(501, 1, 1), knights)
 
 
+@pytest.fixture
+def lancelot_dict():
+    return {
+        'title': 'Sir',
+        'name': 'Lancelot',
+        'number': 3,
+        'born': date(503, 3, 3),
+    }
+
+
+@pytest.fixture
+def lancelot_list():
+    return [
+        'Sir',
+        'Lancelot',
+        3,
+        date(503, 3, 3),
+    ]
+
+
 # tests -----------------------------------------------------------------------
+
+def test_dump_single_dict_unordered(lancelot_dict):
+    knight_dict_schema = KnightDictSchema(many=False, ordered=False)
+    result = knight_dict_schema.dump(lancelot_dict)
+    expected = {
+        'title': 'Sir',
+        'name': 'Lancelot',
+        'number': 3,
+        'born': '0503-03-03'
+    }
+    assert type(result) == dict
+    assert result == expected
+
+
+def test_dump_single_list_unordered(lancelot_list):
+    knight_list_schema = KnightListSchema(many=False, ordered=False)
+    result = knight_list_schema.dump(lancelot_list)
+    expected = {
+        'title': 'Sir',
+        'name': 'Lancelot',
+        'number': 3,
+        'born': '0503-03-03'
+    }
+    assert type(result) == dict
+    assert result == expected
+
 
 def test_dump_single_unordered(lancelot):
     knight_schema = KnightSchema(many=False, ordered=False)

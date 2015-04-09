@@ -37,6 +37,15 @@ def test_simple_fields_attr(cls):
 
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
+def test_simple_fields_key(cls):
+    '''Test creation of simple fields with key.'''
+    key = 'foo'
+    field = cls(key=key)
+    assert isinstance(field, abc.FieldABC)
+    assert field.key == key
+
+
+@pytest.mark.parametrize('cls', SIMPLE_FIELDS)
 def test_simple_fields_getter(cls):
     '''Test creation of simple fields with get.'''
     getter = lambda obj: obj.foo
@@ -70,7 +79,11 @@ def test_illegal_getter_fails(cls):
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
 def test_attr_and_getter_fails(cls):
-    '''Test error on supplying more than one of get, val and attr.'''
+    '''Test error on supplying more than one of get, val, key and attr.'''
+    with pytest.raises(ValueError):
+        field = cls(attr='foo', key='bar')
+    with pytest.raises(ValueError):
+        field = cls(key='foo', val='bar')
     with pytest.raises(ValueError):
         field = cls(attr='foo', get=lambda obj: 'bar')
     with pytest.raises(ValueError):
@@ -87,7 +100,6 @@ def test_passthrough_field_no_attrs(cls):
 
     '''
     field = cls()
-    assert not hasattr(field, 'attr')
     assert not hasattr(field, 'get')
     assert not hasattr(field, 'pack')
 

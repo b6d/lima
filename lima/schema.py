@@ -142,6 +142,14 @@ def _field_val_cns(field, field_name, field_num):
         # later, get value by calling this shortcut
         val_code = '{}(obj)'.format(name)
 
+    elif hasattr(field, 'key'):
+        # add key-shortcut to namespace
+        name = 'key{}'.format(field_num)
+        namespace[name] = field.key
+
+        # later, get value by using this shortcut
+        val_code = 'obj[{}]'.format(name)
+
     else:
         # neither constant val nor getter: try to get value via attr
         # (if attr is not specified, use field name as attr)
