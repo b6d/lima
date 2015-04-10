@@ -274,7 +274,7 @@ to do this for us by specifying ``many=True`` to the schema's constructor):
 .. code-block:: python
     :emphasize-lines: 1
 
-    many_persons_schema =  PersonSchema(only='last_name', many=True)
+    many_persons_schema = PersonSchema(only='last_name', many=True)
     many_persons_schema.dump(persons)
     # [{'last_name': 'Hemingway'},
     #  {'last_name': 'Woolf'},
