@@ -12,10 +12,10 @@ Changelog
 - Support getting field values from an object's items by providing the ``key``
   argument to a Field constructor.
 
-- Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
-
 - Add a ``fields.Decimal`` field type that packs ``decimal.Decimal`` values
   into strings.
+
+- Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
 
 
 0.4 (2015-01-15)
