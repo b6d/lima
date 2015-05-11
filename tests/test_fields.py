@@ -1,6 +1,7 @@
 '''tests for the fields module'''
 
 import datetime as dt
+import decimal
 
 import pytest
 
@@ -16,7 +17,8 @@ PASSTHROUGH_FIELDS = [
 
 SIMPLE_FIELDS = PASSTHROUGH_FIELDS + [
     fields.Date,
-    fields.DateTime
+    fields.DateTime,
+    fields.Decimal,
 ]
 
 
@@ -116,6 +118,12 @@ def test_datetime_pack():
     datetime = dt.datetime(1952, 9, 1, 23, 11, 59, 123456, tz)
     expected = '1952-09-01T23:11:59.123456+02:00'
     assert fields.DateTime.pack(datetime) == expected
+
+
+def test_decimal_pack():
+    '''Test decimal field pack static method'''
+    val = decimal.Decimal('1.2345')
+    assert fields.Decimal.pack(val) == '1.2345'
 
 
 class SomeClass:
