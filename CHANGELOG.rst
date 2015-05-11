@@ -14,6 +14,9 @@ Changelog
 
 - Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
 
+- Add a ``fields.Decimal`` field type that packs ``decimal.Decimal`` values
+  into strings.
+
 
 0.4 (2015-01-15)
 ================
