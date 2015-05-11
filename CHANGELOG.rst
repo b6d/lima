@@ -15,6 +15,8 @@ Changelog
 - Add a ``fields.Decimal`` field type that packs ``decimal.Decimal`` values
   into strings.
 
+- Move Tests into directory ``/test``.
+
 - Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
 
 
