@@ -1,6 +1,7 @@
 '''Field classes and related code.'''
 
 import datetime
+import decimal
 
 from lima import abc
 from lima import registry
@@ -69,6 +70,17 @@ class Boolean(Field):
 
     '''
     pass
+
+
+class Decimal(Field):
+    '''A decimal field.
+
+    Decimal values get serialized as strings, this way, no precision is lost.
+
+    '''
+    @staticmethod
+    def pack(val)
+        return str(val) if val is not None else None
 
 
 class Float(Field):
@@ -392,6 +404,7 @@ TYPE_MAPPING = {
     str: String,
     datetime.date: Date,
     datetime.datetime: DateTime,
+    decimal.Decimal: Decimal,
 }
 '''A mapping of native Python types to :class:`Field` classes.
 
