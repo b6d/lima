@@ -52,7 +52,7 @@ Llama and the Alpaca.
 Despite its delicate frame, the Vicuña is perfectly adapted to the harsh
 conditions in the high alpine regions of the Andes. It is a mainly wild animal
 long time believed to never have been domesticated. Reports of Vicuñas
-breathing fire are greatly exaggerated.
+breathing fire are exaggerated.
 
 .. [#] Beach, C. (Ed.). (1914). The New Student's Reference Work. Chicago: F.
    E. Compton and Company (via `Wikisource <http://en.wikisource.org/wiki/

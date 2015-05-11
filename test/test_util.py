@@ -21,25 +21,25 @@ def test_suppress():
             1 / 0
 
 
-def test_complain_about():
-    '''Test if complain_about prefixes exception messages correctly.'''
+def test_exception_context():
+    '''Test if exception_context prefixes exception messages correctly.'''
     with pytest.raises(RuntimeError) as e:
-        with util.complain_about('foo'):
+        with util.exception_context('foo'):
             raise RuntimeError()
         assert str(e) == 'foo'
 
     with pytest.raises(RuntimeError) as e:
-        with util.complain_about('bar'):
+        with util.exception_context('bar'):
             raise RuntimeError('my message')
         assert str(e) == 'bar: my message'
 
     with pytest.raises(ZeroDivisionError) as e:
-        with util.complain_about('foo'):
+        with util.exception_context('foo'):
             1 / 0
         assert str(e).startswith('foo')
 
     with pytest.raises(AssertionError) as e:
-        with util.complain_about('bar'):
+        with util.exception_context('bar'):
             assert False
         assert str(e).startswith('bar')
 

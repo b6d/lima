@@ -2,7 +2,7 @@
 Linked Data
 ===========
 
-Lets model a relationship between a book and a book review:
+Let's model a relationship between a book and a book review:
 
 .. code-block:: python
     :emphasize-lines: 16
@@ -142,10 +142,11 @@ hyperlinks in RESTful Web services. Here is a quick sketch:
     #  'rating': 10,
     #  'text': 'Has lots of sharks.'}
 
-If you want to do `JSON-LD <http://json-ld.org>`_ and you want to have fields
-with names like ``"@id"`` or ``"@context"``, have a look at the section on
-:ref:`field_name_mangling` for an easy way to accomplish this.
+.. note::
 
+    If you want to do `JSON-LD <http://json-ld.org>`_, you may want to have
+    fields with names like ``"@id"`` or ``"@context"``. Have a look at the
+    section on :ref:`field_name_mangling` for an easy way to accomplish this.
 
 
 Two-way Relationships

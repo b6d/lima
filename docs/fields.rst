@@ -53,12 +53,45 @@ attribute name via the ``attr`` argument:
     #  'last_name': 'Hemingway'}
 
 
-Data derived by differnt Means
-------------------------------
+Data from an Object's Items
+---------------------------
 
-Providing ``attr`` is the preferred way to deal with attribute names differing
-from field names, but ``attr`` is not always enough. What if we can't get the
-information we need from a single attribute? Here *getters* come in handy.
+If an object has it's data stored in items instead of attributes, we can tell
+the field about this by supplying the ``key`` argument instead of the ``attr``
+argument:
+
+.. code-block:: python
+    :emphasize-lines: 11-12,16-17
+
+    import datetime
+    from lima import Schema, fields
+
+    person_dict = {
+        'first_name': 'Ernest',
+        'last_name': 'Hemingway',
+        'birthday': datetime.date(1899, 7, 21),
+    }
+
+    class PersonDictSchema(Schema):
+        last_name = fields.String(key='last_name')
+        date_of_birth = fields.Date(key='birthday')
+
+    schema = PersonDictSchema()
+    schema.dump(person_dict)
+    # {'date_of_birth': '1899-07-21',
+    #  'last_name': 'Hemingway'}
+
+.. note::
+
+    It's currently not possible to provide ``None`` as key. use a *getter* (see
+    below) if you need to do this.
+
+
+Data derived by different Means
+-------------------------------
+
+What if we can't get the information we need from a single attribute or key?
+Here *getters* come in handy.
 
 A getter in this context is a callable that takes an object (in our case: a
 person object) and returns the value we're interested in. We tell a field about
@@ -126,8 +159,8 @@ parameter to a field's constructor:
 
 .. note::
 
-    It's not possible to provide ``None`` as a constant value using ``val`` -
-    use a getter if you need to do this.
+    It's currently not possible to provide ``None`` as a constant value using
+    ``val`` - use a getter if you need to do this.
 
 
 On Field Parameters
@@ -208,8 +241,9 @@ Or we can change how already supported data types are marshalled:
     at least in a format accepted by the serializer of your target format).
 
     Also, don't try to override an existing instance method with a static
-    method. Have a look at the source if in doubt (currently only
-    :class:`lima.fields.Embed` implements :meth:`pack` as an instance method.
+    method. Have a look at the source if in doubt (in lima itself, currently
+    only :class:`lima.fields.Embed` and :class:`lima.fields.Reference`
+    implement :meth:`pack` as instance methods.
 
 
 .. _data_validation:

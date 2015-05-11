@@ -12,13 +12,13 @@ from contextlib import contextmanager
 
 
 @contextmanager
-def complain_about(name):
-    '''A Context manager that makes every Exception about name'''
+def exception_context(context_info):
+    '''Context manager adding info to msg of exceptions raised within.'''
     try:
         yield
     except Exception as e:
         # adapted from http://stackoverflow.com/a/17677938
-        msg = '{}: {}'.format(name, e) if e.args else name
+        msg = '{}: {}'.format(context_info, e) if e.args else context_info
         e.args = (msg, ) + e.args[1:]
         raise
 

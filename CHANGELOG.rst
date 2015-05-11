@@ -2,6 +2,27 @@
 Changelog
 =========
 
+0.6 (unreleased)
+================
+
+.. note::
+
+    While unreleased, the changelog of lima 0.6 is itself subject to change.
+
+0.5 (2015-05-11)
+================
+
+- Support getting field values from an object's items by providing the ``key``
+  argument to a Field constructor.
+
+- Add a ``fields.Decimal`` field type that packs ``decimal.Decimal`` values
+  into strings.
+
+- Move Tests into directory ``/test``.
+
+- Remove deprecated field ``fields.Nested``. Use ``fields.Embed`` instead.
+
+
 0.4 (2015-01-15)
 ================
 
@@ -36,7 +57,7 @@ Changelog
 
 - Small speed improvement when serializing collections.
 
-- Remove deprecated field ``fields.type_mapping``. Use ``fields.TYPE_MAPPING``
+- Remove deprecated name ``fields.type_mapping``. Use ``fields.TYPE_MAPPING``
   instead.
 
 - Overall cleanup, improvements and bug fixes.

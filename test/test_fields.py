@@ -1,6 +1,7 @@
 '''tests for the fields module'''
 
 import datetime as dt
+import decimal
 
 import pytest
 
@@ -16,7 +17,8 @@ PASSTHROUGH_FIELDS = [
 
 SIMPLE_FIELDS = PASSTHROUGH_FIELDS + [
     fields.Date,
-    fields.DateTime
+    fields.DateTime,
+    fields.Decimal,
 ]
 
 
@@ -34,6 +36,15 @@ def test_simple_fields_attr(cls):
     field = cls(attr=attr)
     assert isinstance(field, abc.FieldABC)
     assert field.attr == attr
+
+
+@pytest.mark.parametrize('cls', SIMPLE_FIELDS)
+def test_simple_fields_key(cls):
+    '''Test creation of simple fields with key.'''
+    key = 'foo'
+    field = cls(key=key)
+    assert isinstance(field, abc.FieldABC)
+    assert field.key == key
 
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
@@ -70,7 +81,11 @@ def test_illegal_getter_fails(cls):
 
 @pytest.mark.parametrize('cls', SIMPLE_FIELDS)
 def test_attr_and_getter_fails(cls):
-    '''Test error on supplying more than one of get, val and attr.'''
+    '''Test error on supplying more than one of get, val, key and attr.'''
+    with pytest.raises(ValueError):
+        field = cls(attr='foo', key='bar')
+    with pytest.raises(ValueError):
+        field = cls(key='foo', val='bar')
     with pytest.raises(ValueError):
         field = cls(attr='foo', get=lambda obj: 'bar')
     with pytest.raises(ValueError):
@@ -87,7 +102,6 @@ def test_passthrough_field_no_attrs(cls):
 
     '''
     field = cls()
-    assert not hasattr(field, 'attr')
     assert not hasattr(field, 'get')
     assert not hasattr(field, 'pack')
 
@@ -104,6 +118,12 @@ def test_datetime_pack():
     datetime = dt.datetime(1952, 9, 1, 23, 11, 59, 123456, tz)
     expected = '1952-09-01T23:11:59.123456+02:00'
     assert fields.DateTime.pack(datetime) == expected
+
+
+def test_decimal_pack():
+    '''Test decimal field pack static method'''
+    val = decimal.Decimal('1.2345')
+    assert fields.Decimal.pack(val) == '1.2345'
 
 
 class SomeClass:
