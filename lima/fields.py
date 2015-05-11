@@ -79,7 +79,7 @@ class Decimal(Field):
 
     '''
     @staticmethod
-    def pack(val)
+    def pack(val):
         return str(val) if val is not None else None
 
 
