@@ -2,12 +2,15 @@
 Changelog
 =========
 
-0.5 (unreleased)
+0.6 (unreleased)
 ================
 
 .. note::
 
-    While unreleased, the changelog of lima 0.5 is itself subject to change.
+    While unreleased, the changelog of lima 0.6 is itself subject to change.
+
+0.5 (2015-05-11)
+================
 
 - Support getting field values from an object's items by providing the ``key``
   argument to a Field constructor.
