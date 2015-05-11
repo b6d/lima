@@ -77,12 +77,12 @@ See the `documentation`_  for more comprehensive install instructions.
     :target: https://lima.readthedocs.org
     :alt: Documentation Status
 
-.. |build| image:: https://img.shields.io/travis/b6d/lima/master.svg
+.. |build| image:: https://img.shields.io/travis/b6d/lima/develop.svg
     ?style=flat-square
     :target: https://travis-ci.org/b6d/lima
     :alt: Build Status
 
-.. |coverage| image:: https://img.shields.io/coveralls/b6d/lima/master.svg
+.. |coverage| image:: https://img.shields.io/coveralls/b6d/lima/develop.svg
     ?style=flat-square
     :target: https://coveralls.io/r/b6d/lima
     :alt: Test Coverage
